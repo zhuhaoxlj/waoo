@@ -6,22 +6,28 @@ import WorkspaceRunStreamConsoles from '@/app/[locale]/workspace/[projectId]/mod
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
+  useLocale: () => 'zh',
 }))
 
 vi.mock('@/components/llm-console/LLMStageStreamCard', () => ({
   __esModule: true,
   default: ({
     title,
+    stages,
     placeholderText,
     topRightAction,
+    renderStageActions,
   }: {
     title: string
+    stages: Array<{ id: string; title: string }>
     placeholderText?: string
     topRightAction?: React.ReactNode
+    renderStageActions?: (stage: { id: string; title: string }) => React.ReactNode
   }) => createElement(
     'section',
     null,
     `LLMStageStreamCard:${title}:${placeholderText || ''}`,
+    stages.map((stage) => createElement('div', { key: stage.id }, `${stage.id}:${stage.title}`, renderStageActions?.(stage))),
     topRightAction,
   ),
 }))
@@ -102,6 +108,12 @@ describe('WorkspaceRunStreamConsoles', () => {
 
     expect(html).toContain('runConsole.start')
     expect(html).toContain('runConsole.storyToScriptWaiting')
+    expect(html).toContain('analyze_characters:progress.streamStep.analyzeCharacters')
+    expect(html).toContain('analyze_locations:progress.streamStep.analyzeLocations')
+    expect(html).toContain('analyze_props:progress.streamStep.analyzeProps')
+    expect(html).toContain('split_clips:progress.streamStep.splitClips')
+    expect(html).toContain('screenplay_conversion:progress.streamStep.screenplayConversion')
+    expect(html).toContain('runConsole.editPrompt')
   })
 
   it('keeps console mounted while story-to-script is launching before stream becomes visible', () => {

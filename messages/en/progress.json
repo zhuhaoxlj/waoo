@@ -127,7 +127,22 @@
     "storyToScriptWaiting": "Click Start in the top-right to begin creation",
     "start": "Start",
     "stop": "Stop",
-    "minimize": "Minimize"
+    "minimize": "Minimize",
+    "editPrompt": "Edit prompt",
+    "promptEditorTitle": "Prompt editor",
+    "promptEditorSubtitle": "Saving writes a local override file that will be used on the next run.",
+    "promptEditorLoading": "Loading prompt template...",
+    "promptEditorLoadFailed": "Failed to load prompt template",
+    "promptEditorSaveFailed": "Failed to save prompt template",
+    "promptEditorSource": "Source",
+    "promptEditorSourceDefault": "Default template",
+    "promptEditorSourceOverride": "Local override",
+    "promptEditorPath": "Current file",
+    "promptEditorPlaceholder": "Edit the prompt template here...",
+    "savePrompt": "Save prompt",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "streamStep": {
     "analyzeCharacters": "Analyze characters",

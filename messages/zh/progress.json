@@ -127,7 +127,22 @@
     "storyToScriptWaiting": "点击右上角开始后执行创作",
     "start": "开始",
     "stop": "停止",
-    "minimize": "最小化"
+    "minimize": "最小化",
+    "editPrompt": "编辑提示词",
+    "promptEditorTitle": "提示词编辑",
+    "promptEditorSubtitle": "保存后会写入本地覆盖文件，下一次开始任务时优先生效。",
+    "promptEditorLoading": "正在加载提示词...",
+    "promptEditorLoadFailed": "加载提示词失败",
+    "promptEditorSaveFailed": "保存提示词失败",
+    "promptEditorSource": "当前来源",
+    "promptEditorSourceDefault": "默认模板",
+    "promptEditorSourceOverride": "本地覆盖",
+    "promptEditorPath": "当前文件",
+    "promptEditorPlaceholder": "在这里编辑提示词内容...",
+    "savePrompt": "保存提示词",
+    "saving": "保存中...",
+    "cancel": "取消",
+    "close": "关闭"
   },
   "streamStep": {
     "analyzeCharacters": "角色分析",

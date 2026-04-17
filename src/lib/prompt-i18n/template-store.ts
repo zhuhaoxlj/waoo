@@ -11,7 +11,15 @@ function buildCacheKey(promptId: PromptId, locale: PromptLocale) {
   return `${promptId}:${locale}`
 }
 
-export function getPromptTemplate(promptId: PromptId, locale: PromptLocale): string {
+type PromptTemplateMeta = {
+  content: string
+  source: 'default' | 'override'
+  filePath: string
+  defaultFilePath: string
+  overrideFilePath: string
+}
+
+function resolvePromptPaths(promptId: PromptId, locale: PromptLocale) {
   const entry = PROMPT_CATALOG[promptId]
   if (!entry) {
     throw new PromptI18nError(
@@ -20,24 +28,72 @@ export function getPromptTemplate(promptId: PromptId, locale: PromptLocale): str
       `Prompt is not registered: ${promptId}`,
     )
   }
+  const relativePath = `${entry.pathStem}.${locale}.txt`
+  return {
+    defaultFilePath: path.join(process.cwd(), 'lib', 'prompts', relativePath),
+    overrideFilePath: path.join(process.cwd(), 'lib', 'prompts-overrides', relativePath),
+  }
+}
 
-  const cacheKey = buildCacheKey(promptId, locale)
-  const cached = templateCache.get(cacheKey)
-  if (cached) return cached
-
-  const filePath = path.join(process.cwd(), 'lib', 'prompts', `${entry.pathStem}.${locale}.txt`)
-  let template = ''
+function readTemplateFromDisk(promptId: PromptId, locale: PromptLocale): PromptTemplateMeta {
+  const { defaultFilePath, overrideFilePath } = resolvePromptPaths(promptId, locale)
+  if (fs.existsSync(overrideFilePath)) {
+    return {
+      content: fs.readFileSync(overrideFilePath, 'utf-8'),
+      source: 'override',
+      filePath: overrideFilePath,
+      defaultFilePath,
+      overrideFilePath,
+    }
+  }
   try {
-    template = fs.readFileSync(filePath, 'utf-8')
+    return {
+      content: fs.readFileSync(defaultFilePath, 'utf-8'),
+      source: 'default',
+      filePath: defaultFilePath,
+      defaultFilePath,
+      overrideFilePath,
+    }
   } catch {
     throw new PromptI18nError(
       'PROMPT_TEMPLATE_NOT_FOUND',
       promptId,
-      `Prompt template not found: ${filePath}`,
-      { filePath, locale },
+      `Prompt template not found: ${defaultFilePath}`,
+      { filePath: defaultFilePath, locale },
     )
   }
+}
 
-  templateCache.set(cacheKey, template)
+function clearPromptTemplateCache(promptId: PromptId, locale: PromptLocale) {
+  const cacheKey = buildCacheKey(promptId, locale)
+  templateCache.delete(cacheKey)
+}
+
+export function getPromptTemplateWithMeta(promptId: PromptId, locale: PromptLocale): PromptTemplateMeta {
+  const template = readTemplateFromDisk(promptId, locale)
+  templateCache.set(buildCacheKey(promptId, locale), template.content)
   return template
+}
+
+export function getPromptTemplate(promptId: PromptId, locale: PromptLocale): string {
+  const cacheKey = buildCacheKey(promptId, locale)
+  const cached = templateCache.get(cacheKey)
+  if (cached) return cached
+  return getPromptTemplateWithMeta(promptId, locale).content
+}
+
+export function savePromptTemplateOverride(promptId: PromptId, locale: PromptLocale, content: string): PromptTemplateMeta {
+  const { overrideFilePath } = resolvePromptPaths(promptId, locale)
+  fs.mkdirSync(path.dirname(overrideFilePath), { recursive: true })
+  fs.writeFileSync(overrideFilePath, content, 'utf-8')
+  clearPromptTemplateCache(promptId, locale)
+  return getPromptTemplateWithMeta(promptId, locale)
+}
+
+export function deletePromptTemplateOverride(promptId: PromptId, locale: PromptLocale) {
+  const { overrideFilePath } = resolvePromptPaths(promptId, locale)
+  if (fs.existsSync(overrideFilePath)) {
+    fs.unlinkSync(overrideFilePath)
+  }
+  clearPromptTemplateCache(promptId, locale)
 }

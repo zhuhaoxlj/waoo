@@ -39,6 +39,7 @@ export type LLMStageStreamCardProps = {
   smoothStreaming?: boolean
   errorMessage?: string
   topRightAction?: ReactNode
+  renderStageActions?: (stage: LLMStageViewItem) => ReactNode
 }
 
 const PROGRESS_KEY_PREFIX = 'progress.'
@@ -182,6 +183,7 @@ export default function LLMStageStreamCard({
   smoothStreaming = true,
   errorMessage,
   topRightAction,
+  renderStageActions,
 }: LLMStageStreamCardProps) {
   const t = useTranslations('progress')
 
@@ -406,6 +408,7 @@ export default function LLMStageStreamCard({
                 stage.status === 'failed'
                 && stage.retryable !== false
                 && typeof onRetryStage === 'function'
+              const stageActions = renderStageActions?.(stage)
               return (
                 <li key={stage.id}>
                   <div
@@ -442,8 +445,10 @@ export default function LLMStageStreamCard({
                         />
                       </div>
                     </button>
-                    {showRetryButton && (
-                      <div className="mt-2 flex justify-end">
+                    {(showRetryButton || stageActions) && (
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <div>{stageActions}</div>
+                        {showRetryButton ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -453,6 +458,7 @@ export default function LLMStageStreamCard({
                         >
                           重试
                         </button>
+                        ) : null}
                       </div>
                     )}
                   </div>

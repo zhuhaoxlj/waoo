@@ -1,7 +1,13 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import LLMStageStreamCard, { type LLMStageViewItem } from '@/components/llm-console/LLMStageStreamCard'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import {
+  STORY_TO_SCRIPT_EDITABLE_STAGES,
+  resolveStoryToScriptStageId,
+  type StoryToScriptEditableStageId,
+} from '@/lib/novel-promotion/story-to-script-stage-prompts'
 
 type RunStreamStep = {
   id: string
@@ -48,6 +54,76 @@ interface WorkspaceRunStreamConsolesProps {
   hideMinimizedBadges?: boolean
 }
 
+type PromptEditorState = {
+  stageId: StoryToScriptEditableStageId
+  title: string
+  content: string
+  source: 'default' | 'override'
+  filePath: string
+  defaultFilePath: string
+  overrideFilePath: string
+}
+
+function aggregateStoryToScriptStages(stages: LLMStageViewItem[]): LLMStageViewItem[] {
+  return STORY_TO_SCRIPT_EDITABLE_STAGES.map((stageDef) => {
+    const matched = stages.filter((stage) => resolveStoryToScriptStageId(stage.id) === stageDef.id)
+    if (matched.length === 0) {
+      return {
+        id: stageDef.id,
+        title: stageDef.titleKey,
+        status: 'pending',
+        progress: 0,
+      } satisfies LLMStageViewItem
+    }
+
+    if (matched.some((stage) => stage.status === 'failed')) {
+      return {
+        id: stageDef.id,
+        title: stageDef.titleKey,
+        status: 'failed',
+        progress: Math.max(...matched.map((stage) => stage.progress || 0), 0),
+        retryable: matched.some((stage) => stage.retryable !== false),
+      } satisfies LLMStageViewItem
+    }
+
+    if (matched.some((stage) => stage.status === 'processing')) {
+      return {
+        id: stageDef.id,
+        title: stageDef.titleKey,
+        status: 'processing',
+        progress: Math.max(...matched.map((stage) => stage.progress || 0), 0),
+      } satisfies LLMStageViewItem
+    }
+
+    if (matched.some((stage) => stage.status === 'blocked')) {
+      return {
+        id: stageDef.id,
+        title: stageDef.titleKey,
+        status: 'blocked',
+        progress: Math.max(...matched.map((stage) => stage.progress || 0), 0),
+      } satisfies LLMStageViewItem
+    }
+
+    if (matched.some((stage) => stage.status === 'queued')) {
+      return {
+        id: stageDef.id,
+        title: stageDef.titleKey,
+        status: 'queued',
+        progress: Math.max(...matched.map((stage) => stage.progress || 0), 0),
+      } satisfies LLMStageViewItem
+    }
+
+    return {
+      id: stageDef.id,
+      title: stageDef.titleKey,
+      status: matched.every((stage) => stage.status === 'completed' || stage.status === 'stale') ? 'completed' : 'pending',
+      progress: matched.every((stage) => stage.status === 'completed' || stage.status === 'stale')
+        ? 100
+        : Math.max(...matched.map((stage) => stage.progress || 0), 0),
+    } satisfies LLMStageViewItem
+  })
+}
+
 export default function WorkspaceRunStreamConsoles({
   storyToScriptStream,
   scriptToStoryboardStream,
@@ -62,6 +138,12 @@ export default function WorkspaceRunStreamConsoles({
   hideMinimizedBadges,
 }: WorkspaceRunStreamConsolesProps) {
   const t = useTranslations('progress')
+  const locale = useLocale()
+  const [promptEditor, setPromptEditor] = useState<PromptEditorState | null>(null)
+  const [promptEditorDraft, setPromptEditorDraft] = useState('')
+  const [promptEditorLoading, setPromptEditorLoading] = useState(false)
+  const [promptEditorSaving, setPromptEditorSaving] = useState(false)
+  const [promptEditorError, setPromptEditorError] = useState('')
   const storyToScriptActive =
     !!storyToScriptPendingStart ||
     !!storyToScriptLaunching ||
@@ -82,23 +164,48 @@ export default function WorkspaceRunStreamConsoles({
       : storyToScriptStream.status === 'failed'
         ? 'failed'
         : 'processing'
-  const storyToScriptStages = storyToScriptStream.stages.length > 0
-    ? storyToScriptStream.stages
-    : [{
+  const storyToScriptStages = useMemo(() => {
+    if (storyToScriptStream.stages.length > 0) {
+      return aggregateStoryToScriptStages(storyToScriptStream.stages)
+    }
+    if (storyToScriptPendingStart || storyToScriptLaunching) {
+      return STORY_TO_SCRIPT_EDITABLE_STAGES.map((stage) => ({
+        id: stage.id,
+        title: stage.titleKey,
+        status: 'pending' as const,
+        progress: 0,
+      }))
+    }
+    return [{
       id: 'story_to_script_run',
       title: t('runConsole.storyToScript'),
       status: storyFallbackStatus,
       progress: 0,
       subtitle: storyToScriptStream.errorMessage || undefined,
     }]
+  }, [
+    storyFallbackStatus,
+    storyToScriptLaunching,
+    storyToScriptPendingStart,
+    storyToScriptStream.errorMessage,
+    storyToScriptStream.stages,
+    t,
+  ])
+  const storyToScriptActiveAggregateStageId =
+    resolveStoryToScriptStageId(storyToScriptStream.activeStepId) ||
+    storyToScriptStages.find((stage) => stage.status === 'processing' || stage.status === 'failed')?.id ||
+    storyToScriptStages.find((stage) => stage.status === 'completed')?.id ||
+    storyToScriptStages[0]?.id ||
+    null
   const storyToScriptActiveStage = storyToScriptStream.activeStepId
-    ? storyToScriptStages.find((stage) => stage.id === storyToScriptStream.activeStepId) || null
+    ? storyToScriptStages.find((stage) => stage.id === storyToScriptActiveAggregateStageId) || null
     : null
   const storyToScriptCardTitle =
     storyToScriptActiveStage?.title ||
     t('runConsole.storyToScript')
-  const storyToScriptSelectedStageId =
-    storyToScriptStream.selectedStep?.id || storyToScriptStream.activeStepId || null
+  const storyToScriptSelectedStageId = resolveStoryToScriptStageId(
+    storyToScriptStream.selectedStep?.id || storyToScriptStream.activeStepId || null,
+  )
   const storyToScriptSelectedStage = storyToScriptSelectedStageId
     ? storyToScriptStages.find((stage) => stage.id === storyToScriptSelectedStageId) || null
     : null
@@ -152,6 +259,84 @@ export default function WorkspaceRunStreamConsoles({
     })
   }
 
+  const handleStoryToScriptStageSelect = (stageId: string) => {
+    const currentActiveRawId = storyToScriptStream.activeStepId
+    if (resolveStoryToScriptStageId(currentActiveRawId) === stageId && currentActiveRawId) {
+      storyToScriptStream.selectStep(currentActiveRawId)
+      return
+    }
+    const matched = storyToScriptStream.stages.find((stage) => resolveStoryToScriptStageId(stage.id) === stageId)
+    if (matched) {
+      storyToScriptStream.selectStep(matched.id)
+    }
+  }
+
+  const handleOpenPromptEditor = async (stageId: StoryToScriptEditableStageId) => {
+    setPromptEditorLoading(true)
+    setPromptEditorError('')
+    try {
+      const response = await fetch(`/api/user/story-to-script-prompts/${stageId}?locale=${encodeURIComponent(locale)}`, {
+        method: 'GET',
+        cache: 'no-store',
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : t('runConsole.promptEditorLoadFailed'))
+      }
+      const nextEditor: PromptEditorState = {
+        stageId,
+        title: t(payload.titleKey || 'runConsole.storyToScript'),
+        content: typeof payload.content === 'string' ? payload.content : '',
+        source: payload.source === 'override' ? 'override' : 'default',
+        filePath: typeof payload.filePath === 'string' ? payload.filePath : '',
+        defaultFilePath: typeof payload.defaultFilePath === 'string' ? payload.defaultFilePath : '',
+        overrideFilePath: typeof payload.overrideFilePath === 'string' ? payload.overrideFilePath : '',
+      }
+      setPromptEditor(nextEditor)
+      setPromptEditorDraft(nextEditor.content)
+    } catch (error) {
+      setPromptEditorError(error instanceof Error ? error.message : t('runConsole.promptEditorLoadFailed'))
+    } finally {
+      setPromptEditorLoading(false)
+    }
+  }
+
+  const handleSavePromptEditor = async () => {
+    if (!promptEditor) return
+    setPromptEditorSaving(true)
+    setPromptEditorError('')
+    try {
+      const response = await fetch(`/api/user/story-to-script-prompts/${promptEditor.stageId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          locale,
+          content: promptEditorDraft,
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : t('runConsole.promptEditorSaveFailed'))
+      }
+      setPromptEditor((current) => current ? {
+        ...current,
+        content: typeof payload.content === 'string' ? payload.content : promptEditorDraft,
+        source: payload.source === 'override' ? 'override' : current.source,
+        filePath: typeof payload.filePath === 'string' ? payload.filePath : current.filePath,
+        defaultFilePath: typeof payload.defaultFilePath === 'string' ? payload.defaultFilePath : current.defaultFilePath,
+        overrideFilePath: typeof payload.overrideFilePath === 'string' ? payload.overrideFilePath : current.overrideFilePath,
+      } : current)
+      setPromptEditorDraft(typeof payload.content === 'string' ? payload.content : promptEditorDraft)
+    } catch (error) {
+      setPromptEditorError(error instanceof Error ? error.message : t('runConsole.promptEditorSaveFailed'))
+      return
+    } finally {
+      setPromptEditorSaving(false)
+    }
+  }
+
   return (
     <>
       {!hideMinimizedBadges && showStoryToScriptConsole && storyToScriptConsoleMinimized && storyToScriptActive && (
@@ -171,9 +356,9 @@ export default function WorkspaceRunStreamConsoles({
               title={storyToScriptCardTitle}
               subtitle={t('runConsole.storyToScriptSubtitle')}
               stages={storyToScriptStages}
-              activeStageId={storyToScriptStream.activeStepId || storyToScriptStages[storyToScriptStages.length - 1]?.id || ''}
-              selectedStageId={storyToScriptStream.selectedStep?.id || undefined}
-              onSelectStage={storyToScriptStream.selectStep}
+              activeStageId={storyToScriptActiveAggregateStageId || storyToScriptStages[0]?.id || ''}
+              selectedStageId={storyToScriptSelectedStageId || undefined}
+              onSelectStage={handleStoryToScriptStageSelect}
               onRetryStage={(stepId) => {
                 void handleRetryStepById(storyToScriptStream, stepId)
               }}
@@ -182,8 +367,25 @@ export default function WorkspaceRunStreamConsoles({
               activeMessage={storyToScriptStream.activeMessage}
               overallProgress={storyToScriptStream.overallProgress}
               showCursor={storyToScriptShowCursor}
-              autoScroll={storyToScriptStream.selectedStep?.id === storyToScriptStream.activeStepId}
+              autoScroll={storyToScriptSelectedStageId === storyToScriptActiveAggregateStageId}
               errorMessage={storyToScriptStream.errorMessage}
+              renderStageActions={(stage) => {
+                const editableStageId = resolveStoryToScriptStageId(stage.id)
+                if (!editableStageId) {
+                  return null
+                }
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleOpenPromptEditor(editableStageId)
+                    }}
+                    className="glass-btn-base glass-btn-secondary rounded-md px-2.5 py-1 text-[11px]"
+                  >
+                    {t('runConsole.editPrompt')}
+                  </button>
+                )
+              }}
               topRightAction={(
                 <div className="flex items-center gap-2">
                   {storyToScriptPendingStart && onStartStoryToScript && (
@@ -266,6 +468,91 @@ export default function WorkspaceRunStreamConsoles({
                 </div>
               )}
             />
+          </div>
+        </div>
+      )}
+
+      {(promptEditor || promptEditorLoading || promptEditorError) && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/35 px-4">
+          <div className="glass-surface-modal w-full max-w-4xl overflow-hidden rounded-2xl">
+            <div className="border-b border-[var(--glass-stroke-base)] px-5 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-[var(--glass-text-primary)]">
+                    {promptEditor?.title || t('runConsole.promptEditorTitle')}
+                  </h3>
+                  <p className="mt-1 text-sm text-[var(--glass-text-secondary)]">
+                    {t('runConsole.promptEditorSubtitle')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPromptEditor(null)
+                    setPromptEditorDraft('')
+                    setPromptEditorError('')
+                  }}
+                  className="glass-btn-base glass-btn-secondary rounded-lg px-3 py-1.5 text-xs"
+                >
+                  {t('runConsole.close')}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4 px-5 py-4">
+              {promptEditorLoading ? (
+                <div className="rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-surface)] px-4 py-8 text-sm text-[var(--glass-text-secondary)]">
+                  {t('runConsole.promptEditorLoading')}
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 text-xs text-[var(--glass-text-tertiary)] md:grid-cols-2">
+                    <div className="rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-surface)] px-3 py-2">
+                      {t('runConsole.promptEditorSource')}: {promptEditor?.source === 'override' ? t('runConsole.promptEditorSourceOverride') : t('runConsole.promptEditorSourceDefault')}
+                    </div>
+                    <div className="rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-surface)] px-3 py-2 break-all">
+                      {t('runConsole.promptEditorPath')}: {promptEditor?.filePath || '-'}
+                    </div>
+                  </div>
+                  <textarea
+                    value={promptEditorDraft}
+                    onChange={(event) => setPromptEditorDraft(event.target.value)}
+                    className="glass-textarea-base app-scrollbar h-[52vh] w-full resize-none px-4 py-3 text-sm"
+                    placeholder={t('runConsole.promptEditorPlaceholder')}
+                  />
+                </>
+              )}
+
+              {promptEditorError && (
+                <div className="rounded-lg bg-[var(--glass-tone-danger-bg)] px-4 py-3 text-sm text-[var(--glass-tone-danger-fg)]">
+                  {promptEditorError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-[var(--glass-stroke-base)] px-5 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setPromptEditor(null)
+                  setPromptEditorDraft('')
+                  setPromptEditorError('')
+                }}
+                className="glass-btn-base glass-btn-secondary rounded-lg px-3 py-1.5 text-xs"
+              >
+                {t('runConsole.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSavePromptEditor()
+                }}
+                disabled={promptEditorLoading || promptEditorSaving || !promptEditor}
+                className="glass-btn-base glass-btn-primary rounded-lg px-3 py-1.5 text-xs disabled:opacity-60"
+              >
+                {promptEditorSaving ? t('runConsole.saving') : t('runConsole.savePrompt')}
+              </button>
+            </div>
           </div>
         </div>
       )}
