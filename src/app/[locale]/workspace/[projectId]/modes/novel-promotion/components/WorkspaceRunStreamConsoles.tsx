@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import LLMStageStreamCard, { type LLMStageViewItem } from '@/components/llm-console/LLMStageStreamCard'
+import { useToast } from '@/contexts/ToastContext'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   STORY_TO_SCRIPT_EDITABLE_STAGES,
@@ -139,6 +140,7 @@ export default function WorkspaceRunStreamConsoles({
 }: WorkspaceRunStreamConsolesProps) {
   const t = useTranslations('progress')
   const locale = useLocale()
+  const { showToast } = useToast()
   const [promptEditor, setPromptEditor] = useState<PromptEditorState | null>(null)
   const [promptEditorDraft, setPromptEditorDraft] = useState('')
   const [promptEditorLoading, setPromptEditorLoading] = useState(false)
@@ -329,6 +331,7 @@ export default function WorkspaceRunStreamConsoles({
         overrideFilePath: typeof payload.overrideFilePath === 'string' ? payload.overrideFilePath : current.overrideFilePath,
       } : current)
       setPromptEditorDraft(typeof payload.content === 'string' ? payload.content : promptEditorDraft)
+      showToast(t('runConsole.promptEditorSaveSucceeded'), 'success')
     } catch (error) {
       setPromptEditorError(error instanceof Error ? error.message : t('runConsole.promptEditorSaveFailed'))
       return

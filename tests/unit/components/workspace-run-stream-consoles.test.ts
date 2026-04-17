@@ -4,9 +4,17 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import WorkspaceRunStreamConsoles from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/WorkspaceRunStreamConsoles'
 
+const showToastMock = vi.hoisted(() => vi.fn())
+
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
   useLocale: () => 'zh',
+}))
+
+vi.mock('@/contexts/ToastContext', () => ({
+  useToast: () => ({
+    showToast: showToastMock,
+  }),
 }))
 
 vi.mock('@/components/llm-console/LLMStageStreamCard', () => ({

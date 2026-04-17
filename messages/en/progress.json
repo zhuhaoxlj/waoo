@@ -134,6 +134,7 @@
     "promptEditorLoading": "Loading prompt template...",
     "promptEditorLoadFailed": "Failed to load prompt template",
     "promptEditorSaveFailed": "Failed to save prompt template",
+    "promptEditorSaveSucceeded": "Prompt saved successfully",
     "promptEditorSource": "Source",
     "promptEditorSourceDefault": "Default template",
     "promptEditorSourceOverride": "Local override",
