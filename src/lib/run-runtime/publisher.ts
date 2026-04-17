@@ -27,4 +27,3 @@ export async function publishRunEvent(input: RunEventInput) {
   await redis.publish(getProjectRunChannel(event.projectId), JSON.stringify(message))
   return message
 }
-

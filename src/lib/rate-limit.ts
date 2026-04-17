@@ -96,7 +96,7 @@ export async function checkRateLimit(
   `
 
     try {
-        const result = await (redis as ReturnType<typeof redis.duplicate>).eval(
+        const result = await redis.eval(
             luaScript,
             1,
             key,

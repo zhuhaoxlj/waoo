@@ -62,8 +62,32 @@ if (!globalForRedis.__waoowaooRedis) {
   globalForRedis.__waoowaooRedis = singleton
 }
 
-export const redis = singleton.app || (singleton.app = createAppRedis())
-export const queueRedis = singleton.queue || (singleton.queue = createQueueRedis())
+export function getRedis() {
+  if (!singleton.app) {
+    singleton.app = createAppRedis()
+  }
+  return singleton.app
+}
+
+export function getQueueRedis() {
+  if (!singleton.queue) {
+    singleton.queue = createQueueRedis()
+  }
+  return singleton.queue
+}
+
+function createRedisProxy(getClient: () => Redis) {
+  return new Proxy({} as Redis, {
+    get(_target, prop, receiver) {
+      const client = getClient() as unknown as Record<PropertyKey, unknown>
+      const value = Reflect.get(client, prop, receiver)
+      return typeof value === 'function' ? value.bind(client) : value
+    },
+  })
+}
+
+export const redis = createRedisProxy(getRedis)
+export const queueRedis = createRedisProxy(getQueueRedis)
 
 export function createSubscriber() {
   const client = new Redis({

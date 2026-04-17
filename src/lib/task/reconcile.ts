@@ -14,10 +14,7 @@ import { TASK_STATUS, TASK_EVENT_TYPE } from './types'
 import { publishTaskEvent } from './publisher'
 import { rollbackTaskBillingForTask } from './service'
 import {
-    imageQueue,
-    videoQueue,
-    voiceQueue,
-    textQueue,
+    getQueueByType,
 } from './queues'
 
 // ────────────────────── 常量 ──────────────────────
@@ -43,7 +40,7 @@ const MISSING_RECONCILE_GRACE_MS = 30_000
 
 type JobState = 'alive' | 'terminal' | 'missing'
 
-const ALL_QUEUES = [imageQueue, videoQueue, voiceQueue, textQueue]
+const ALL_QUEUE_TYPES = ['image', 'video', 'voice', 'text'] as const
 
 /**
  * 检查 BullMQ 中某个 Job 的真实状态。
@@ -52,8 +49,9 @@ const ALL_QUEUES = [imageQueue, videoQueue, voiceQueue, textQueue]
  * - missing:  Job 在所有队列中均不存在
  */
 async function getJobState(taskId: string): Promise<JobState> {
-    for (const queue of ALL_QUEUES) {
+    for (const queueType of ALL_QUEUE_TYPES) {
         try {
+            const queue = getQueueByType(queueType)
             const job = await queue.getJob(taskId)
             if (!job) continue
             const state = await job.getState()
