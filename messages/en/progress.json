@@ -124,6 +124,8 @@
     "scriptToStoryboardRunning": "Script→Storyboard running",
     "storyToScriptSubtitle": "Story To Script V2",
     "scriptToStoryboardSubtitle": "Script To Storyboard V2",
+    "storyToScriptWaiting": "Click Start in the top-right to begin creation",
+    "start": "Start",
     "stop": "Stop",
     "minimize": "Minimize"
   },

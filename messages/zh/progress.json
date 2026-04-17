@@ -124,6 +124,8 @@
     "scriptToStoryboardRunning": "Script→Storyboard 运行中",
     "storyToScriptSubtitle": "Story To Script V2",
     "scriptToStoryboardSubtitle": "Script To Storyboard V2",
+    "storyToScriptWaiting": "点击右上角开始后执行创作",
+    "start": "开始",
     "stop": "停止",
     "minimize": "最小化"
   },

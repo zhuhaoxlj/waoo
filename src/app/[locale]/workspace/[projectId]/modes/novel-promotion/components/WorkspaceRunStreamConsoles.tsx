@@ -37,8 +37,12 @@ type RunStreamState = {
 interface WorkspaceRunStreamConsolesProps {
   storyToScriptStream: RunStreamState
   scriptToStoryboardStream: RunStreamState
+  storyToScriptPendingStart?: boolean
+  storyToScriptLaunching?: boolean
   storyToScriptConsoleMinimized: boolean
   scriptToStoryboardConsoleMinimized: boolean
+  onStartStoryToScript?: () => void
+  onCancelStoryToScriptPendingStart?: () => void
   onStoryToScriptMinimizedChange: (next: boolean) => void
   onScriptToStoryboardMinimizedChange: (next: boolean) => void
   hideMinimizedBadges?: boolean
@@ -47,14 +51,20 @@ interface WorkspaceRunStreamConsolesProps {
 export default function WorkspaceRunStreamConsoles({
   storyToScriptStream,
   scriptToStoryboardStream,
+  storyToScriptPendingStart,
+  storyToScriptLaunching,
   storyToScriptConsoleMinimized,
   scriptToStoryboardConsoleMinimized,
+  onStartStoryToScript,
+  onCancelStoryToScriptPendingStart,
   onStoryToScriptMinimizedChange,
   onScriptToStoryboardMinimizedChange,
   hideMinimizedBadges,
 }: WorkspaceRunStreamConsolesProps) {
   const t = useTranslations('progress')
   const storyToScriptActive =
+    !!storyToScriptPendingStart ||
+    !!storyToScriptLaunching ||
     storyToScriptStream.isRunning ||
     storyToScriptStream.isRecoveredRunning ||
     storyToScriptStream.status === 'running'
@@ -64,10 +74,14 @@ export default function WorkspaceRunStreamConsoles({
     scriptToStoryboardStream.status === 'running'
 
   const showStoryToScriptConsole =
-    storyToScriptStream.isVisible &&
-    (storyToScriptStream.stages.length > 0 || !!storyToScriptStream.errorMessage || storyToScriptActive)
+    (storyToScriptPendingStart || storyToScriptLaunching || storyToScriptStream.isVisible) &&
+    (storyToScriptPendingStart || storyToScriptLaunching || storyToScriptStream.stages.length > 0 || !!storyToScriptStream.errorMessage || storyToScriptActive)
   const storyFallbackStatus: LLMStageViewItem['status'] =
-    storyToScriptStream.status === 'failed' ? 'failed' : 'processing'
+    storyToScriptPendingStart
+      ? 'pending'
+      : storyToScriptStream.status === 'failed'
+        ? 'failed'
+        : 'processing'
   const storyToScriptStages = storyToScriptStream.stages.length > 0
     ? storyToScriptStream.stages
     : [{
@@ -89,6 +103,7 @@ export default function WorkspaceRunStreamConsoles({
     ? storyToScriptStages.find((stage) => stage.id === storyToScriptSelectedStageId) || null
     : null
   const storyToScriptShowCursor =
+    !storyToScriptPendingStart &&
     storyToScriptStream.isRunning &&
     storyToScriptStream.selectedStep?.id === storyToScriptStream.activeStepId &&
     storyToScriptSelectedStage?.status === 'processing'
@@ -163,6 +178,7 @@ export default function WorkspaceRunStreamConsoles({
                 void handleRetryStepById(storyToScriptStream, stepId)
               }}
               outputText={storyToScriptStream.outputText}
+              placeholderText={storyToScriptPendingStart ? t('runConsole.storyToScriptWaiting') : undefined}
               activeMessage={storyToScriptStream.activeMessage}
               overallProgress={storyToScriptStream.overallProgress}
               showCursor={storyToScriptShowCursor}
@@ -170,9 +186,20 @@ export default function WorkspaceRunStreamConsoles({
               errorMessage={storyToScriptStream.errorMessage}
               topRightAction={(
                 <div className="flex items-center gap-2">
+                  {storyToScriptPendingStart && onStartStoryToScript && (
+                    <button
+                      type="button"
+                      onClick={onStartStoryToScript}
+                      className="glass-btn-base glass-btn-primary rounded-lg px-3 py-1.5 text-xs"
+                    >
+                      {t('runConsole.start')}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={storyToScriptStream.reset}
+                    onClick={storyToScriptPendingStart
+                      ? (onCancelStoryToScriptPendingStart || storyToScriptStream.reset)
+                      : storyToScriptStream.reset}
                     className="glass-btn-base glass-btn-secondary rounded-lg px-3 py-1.5 text-xs"
                   >
                     {t('runConsole.stop')}

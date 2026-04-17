@@ -27,8 +27,8 @@ interface UseWorkspaceStageRuntimeParams {
   }> | undefined
   handleUpdateEpisode: (key: string, value: unknown) => Promise<void>
   handleUpdateConfig: (key: string, value: unknown) => Promise<void>
+  openStoryToScriptPendingStart: () => void
   runWithRebuildConfirm: (action: 'storyToScript' | 'scriptToStoryboard', operation: () => Promise<void>) => Promise<void>
-  runStoryToScriptFlow: () => Promise<void>
   runScriptToStoryboardFlow: () => Promise<void>
   handleUpdateClip: (clipId: string, updates: Record<string, unknown>) => Promise<void>
   openAssetLibrary: (characterId?: string | null, refreshAssets?: boolean) => void
@@ -70,8 +70,8 @@ export function useWorkspaceStageRuntime({
   userVideoModels,
   handleUpdateEpisode,
   handleUpdateConfig,
+  openStoryToScriptPendingStart,
   runWithRebuildConfirm,
-  runStoryToScriptFlow,
   runScriptToStoryboardFlow,
   handleUpdateClip,
   openAssetLibrary,
@@ -101,7 +101,9 @@ export function useWorkspaceStageRuntime({
     onNovelTextChange: (value) => handleUpdateEpisode('novelText', value),
     onVideoRatioChange: (value) => handleUpdateConfig('videoRatio', value),
     onArtStyleChange: (value) => handleUpdateConfig('artStyle', value),
-    onRunStoryToScript: () => runWithRebuildConfirm('storyToScript', runStoryToScriptFlow),
+    onRunStoryToScript: async () => {
+      openStoryToScriptPendingStart()
+    },
     onClipUpdate: (clipId, data) => {
       if (!data || typeof data !== 'object' || Array.isArray(data)) {
         throw new Error('onClipUpdate requires a plain object payload')
@@ -132,9 +134,9 @@ export function useWorkspaceStageRuntime({
     isStartingStoryToScript,
     isSubmittingTTS,
     isTransitioning,
+    openStoryToScriptPendingStart,
     openAssetLibrary,
     runScriptToStoryboardFlow,
-    runStoryToScriptFlow,
     runWithRebuildConfirm,
     resolvedUserVideoModels,
     capabilityOverrides,

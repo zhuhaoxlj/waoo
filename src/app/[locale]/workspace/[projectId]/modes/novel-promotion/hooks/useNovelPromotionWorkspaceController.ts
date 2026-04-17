@@ -140,8 +140,7 @@ export function useNovelPromotionWorkspaceController({
     novelText: projectSnapshot.novelText,
     isTransitioning: execution.isTransitioning,
     isStoryToScriptRunning,
-    runWithRebuildConfirm: rebuildState.runWithRebuildConfirm,
-    runStoryToScriptFlow: execution.runStoryToScriptFlow,
+    openStoryToScriptPendingStart: execution.openStoryToScriptPendingStart,
   })
 
   const capsuleNavItems = useWorkspaceStageNavigation({
@@ -164,8 +163,8 @@ export function useNovelPromotionWorkspaceController({
     userVideoModels: userModels.userVideoModels || [],
     handleUpdateEpisode: configActions.handleUpdateEpisode,
     handleUpdateConfig: configActions.handleUpdateConfig,
+    openStoryToScriptPendingStart: execution.openStoryToScriptPendingStart,
     runWithRebuildConfirm: rebuildState.runWithRebuildConfirm,
-    runStoryToScriptFlow: execution.runStoryToScriptFlow,
     runScriptToStoryboardFlow: execution.runScriptToStoryboardFlow,
     handleUpdateClip: videoActions.handleUpdateClip,
     openAssetLibrary: assetLibrary.openAssetLibrary,
@@ -207,6 +206,7 @@ export function useNovelPromotionWorkspaceController({
     isAssetAnalysisRunning: execution.isAssetAnalysisRunning,
     isConfirmingAssets: execution.isConfirmingAssets,
     isTransitioning: execution.isTransitioning,
+    storyToScriptPendingStart: execution.storyToScriptPendingStart,
     isStartingStoryToScript,
     isStartingScriptToStoryboard,
     transitionProgress: execution.transitionProgress,
@@ -218,6 +218,8 @@ export function useNovelPromotionWorkspaceController({
     scriptToStoryboardStream: execution.scriptToStoryboardStream,
     handleGenerateTTS: execution.handleGenerateTTS,
     handleAnalyzeAssets: execution.handleAnalyzeAssets,
+    openStoryToScriptPendingStart: execution.openStoryToScriptPendingStart,
+    cancelStoryToScriptPendingStart: execution.cancelStoryToScriptPendingStart,
     runStoryToScriptFlow: execution.runStoryToScriptFlow,
     runScriptToStoryboardFlow: execution.runScriptToStoryboardFlow,
     showCreatingToast: execution.showCreatingToast,

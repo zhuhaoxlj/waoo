@@ -78,6 +78,7 @@ export function useWorkspaceExecution({
   const [isAssetAnalysisRunning, setIsAssetAnalysisRunning] = useState(false)
   const [isConfirmingAssets, setIsConfirmingAssets] = useState(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [storyToScriptPendingStart, setStoryToScriptPendingStart] = useState(false)
   const [transitionProgress, setTransitionProgress] = useState({ message: '', step: '' })
   const [storyToScriptConsoleMinimized, setStoryToScriptConsoleMinimized] = useState(
     () => readSessionBoolean(storyToScriptMinimizedStorageKey),
@@ -154,6 +155,16 @@ export function useWorkspaceExecution({
     _ulogInfo('[NovelPromotionWorkspace] TTS is disabled, skip generate request')
   }, [])
 
+  const openStoryToScriptPendingStart = useCallback(() => {
+    setStoryToScriptConsoleMinimized(false)
+    setStoryToScriptPendingStart(true)
+  }, [])
+
+  const cancelStoryToScriptPendingStart = useCallback(() => {
+    setStoryToScriptPendingStart(false)
+    storyToScriptStream.reset()
+  }, [storyToScriptStream])
+
   const handleAnalyzeAssets = useCallback(async () => {
     if (!episodeId) return
     if (isAssetAnalysisRunning) {
@@ -189,6 +200,7 @@ export function useWorkspaceExecution({
     }
 
     try {
+      setStoryToScriptPendingStart(false)
       setIsTransitioning(true)
       setStoryToScriptConsoleMinimized(false)
 
@@ -325,6 +337,7 @@ export function useWorkspaceExecution({
     storyToScriptStream.isRecoveredRunning ||
     scriptToStoryboardStream.isRunning ||
     scriptToStoryboardStream.isRecoveredRunning ||
+    storyToScriptPendingStart ||
     isTransitioning ||
     isConfirmingAssets
   ), [
@@ -332,6 +345,7 @@ export function useWorkspaceExecution({
     isTransitioning,
     scriptToStoryboardStream.isRecoveredRunning,
     scriptToStoryboardStream.isRunning,
+    storyToScriptPendingStart,
     storyToScriptStream.isRecoveredRunning,
     storyToScriptStream.isRunning,
   ])
@@ -341,6 +355,7 @@ export function useWorkspaceExecution({
     isAssetAnalysisRunning,
     isConfirmingAssets,
     isTransitioning,
+    storyToScriptPendingStart,
     transitionProgress,
     storyToScriptConsoleMinimized,
     setStoryToScriptConsoleMinimized,
@@ -350,6 +365,8 @@ export function useWorkspaceExecution({
     scriptToStoryboardStream,
     handleGenerateTTS,
     handleAnalyzeAssets,
+    openStoryToScriptPendingStart,
+    cancelStoryToScriptPendingStart,
     runStoryToScriptFlow,
     runScriptToStoryboardFlow,
     showCreatingToast,

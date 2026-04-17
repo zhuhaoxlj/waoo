@@ -18,11 +18,7 @@ interface UseWorkspaceAutoRunParams {
   novelText: string
   isTransitioning: boolean
   isStoryToScriptRunning: boolean
-  runWithRebuildConfirm: (
-    action: 'storyToScript' | 'scriptToStoryboard',
-    operation: () => Promise<void>,
-  ) => Promise<void>
-  runStoryToScriptFlow: () => Promise<void>
+  openStoryToScriptPendingStart: () => void
 }
 
 export function useWorkspaceAutoRun({
@@ -32,8 +28,7 @@ export function useWorkspaceAutoRun({
   novelText,
   isTransitioning,
   isStoryToScriptRunning,
-  runWithRebuildConfirm,
-  runStoryToScriptFlow,
+  openStoryToScriptPendingStart,
 }: UseWorkspaceAutoRunParams) {
   const handledAutoRunKeyRef = useRef<string | null>(null)
 
@@ -54,15 +49,14 @@ export function useWorkspaceAutoRun({
     params.delete('autoRun')
     router.replace(`?${params.toString()}`, { scroll: false })
 
-    void runWithRebuildConfirm('storyToScript', runStoryToScriptFlow)
+    openStoryToScriptPendingStart()
   }, [
     episodeId,
     isStoryToScriptRunning,
     isTransitioning,
     novelText,
+    openStoryToScriptPendingStart,
     router,
-    runStoryToScriptFlow,
-    runWithRebuildConfirm,
     searchParams,
   ])
 }

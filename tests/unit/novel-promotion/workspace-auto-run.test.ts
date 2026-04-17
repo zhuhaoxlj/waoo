@@ -28,8 +28,7 @@ describe('useWorkspaceAutoRun', () => {
   it('consumes autoRun=storyToScript and starts the story-to-script flow once', async () => {
     const effectCallbacks: Array<() => void | (() => void)> = []
     const router = { replace: vi.fn() }
-    const runWithRebuildConfirm = vi.fn(async () => undefined)
-    const runStoryToScriptFlow = vi.fn(async () => undefined)
+    const openStoryToScriptPendingStart = vi.fn()
 
     useEffectMock.mockImplementation((callback: () => void | (() => void)) => {
       effectCallbacks.push(callback)
@@ -42,21 +41,19 @@ describe('useWorkspaceAutoRun', () => {
       novelText: '第一章内容',
       isTransitioning: false,
       isStoryToScriptRunning: false,
-      runWithRebuildConfirm,
-      runStoryToScriptFlow,
+      openStoryToScriptPendingStart,
     })
 
     effectCallbacks[0]?.()
 
     expect(router.replace).toHaveBeenCalledWith('?episode=episode-1', { scroll: false })
-    expect(runWithRebuildConfirm).toHaveBeenCalledWith('storyToScript', runStoryToScriptFlow)
+    expect(openStoryToScriptPendingStart).toHaveBeenCalledTimes(1)
   })
 
   it('does not auto-run when the episode text is still empty', () => {
     const effectCallbacks: Array<() => void | (() => void)> = []
     const router = { replace: vi.fn() }
-    const runWithRebuildConfirm = vi.fn(async () => undefined)
-    const runStoryToScriptFlow = vi.fn(async () => undefined)
+    const openStoryToScriptPendingStart = vi.fn()
 
     useEffectMock.mockImplementation((callback: () => void | (() => void)) => {
       effectCallbacks.push(callback)
@@ -69,13 +66,12 @@ describe('useWorkspaceAutoRun', () => {
       novelText: '   ',
       isTransitioning: false,
       isStoryToScriptRunning: false,
-      runWithRebuildConfirm,
-      runStoryToScriptFlow,
+      openStoryToScriptPendingStart,
     })
 
     effectCallbacks[0]?.()
 
     expect(router.replace).not.toHaveBeenCalled()
-    expect(runWithRebuildConfirm).not.toHaveBeenCalled()
+    expect(openStoryToScriptPendingStart).not.toHaveBeenCalled()
   })
 })

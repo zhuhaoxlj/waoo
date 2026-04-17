@@ -10,7 +10,20 @@ vi.mock('next-intl', () => ({
 
 vi.mock('@/components/llm-console/LLMStageStreamCard', () => ({
   __esModule: true,
-  default: ({ title }: { title: string }) => createElement('section', null, `LLMStageStreamCard:${title}`),
+  default: ({
+    title,
+    placeholderText,
+    topRightAction,
+  }: {
+    title: string
+    placeholderText?: string
+    topRightAction?: React.ReactNode
+  }) => createElement(
+    'section',
+    null,
+    `LLMStageStreamCard:${title}:${placeholderText || ''}`,
+    topRightAction,
+  ),
 }))
 
 function createStreamState(overrides?: Partial<React.ComponentProps<typeof WorkspaceRunStreamConsoles>['storyToScriptStream']>) {
@@ -54,6 +67,64 @@ describe('WorkspaceRunStreamConsoles', () => {
         }),
         storyToScriptConsoleMinimized: false,
         scriptToStoryboardConsoleMinimized: true,
+        onStoryToScriptMinimizedChange: () => undefined,
+        onScriptToStoryboardMinimizedChange: () => undefined,
+      }),
+    )
+
+    expect(html).toContain('LLMStageStreamCard:runConsole.storyToScript')
+  })
+
+  it('shows start action when story-to-script is pending manual start', () => {
+    Reflect.set(globalThis, 'React', React)
+
+    const html = renderToStaticMarkup(
+      createElement(WorkspaceRunStreamConsoles, {
+        storyToScriptStream: createStreamState({
+          status: 'idle',
+          isVisible: false,
+          isRecoveredRunning: false,
+        }),
+        scriptToStoryboardStream: createStreamState({
+          status: 'idle',
+          isVisible: false,
+          isRecoveredRunning: false,
+        }),
+        storyToScriptPendingStart: true,
+        storyToScriptConsoleMinimized: false,
+        scriptToStoryboardConsoleMinimized: true,
+        onStartStoryToScript: () => undefined,
+        onCancelStoryToScriptPendingStart: () => undefined,
+        onStoryToScriptMinimizedChange: () => undefined,
+        onScriptToStoryboardMinimizedChange: () => undefined,
+      }),
+    )
+
+    expect(html).toContain('runConsole.start')
+    expect(html).toContain('runConsole.storyToScriptWaiting')
+  })
+
+  it('keeps console mounted while story-to-script is launching before stream becomes visible', () => {
+    Reflect.set(globalThis, 'React', React)
+
+    const html = renderToStaticMarkup(
+      createElement(WorkspaceRunStreamConsoles, {
+        storyToScriptStream: createStreamState({
+          status: 'idle',
+          isVisible: false,
+          isRecoveredRunning: false,
+        }),
+        scriptToStoryboardStream: createStreamState({
+          status: 'idle',
+          isVisible: false,
+          isRecoveredRunning: false,
+        }),
+        storyToScriptPendingStart: false,
+        storyToScriptLaunching: true,
+        storyToScriptConsoleMinimized: false,
+        scriptToStoryboardConsoleMinimized: true,
+        onStartStoryToScript: () => undefined,
+        onCancelStoryToScriptPendingStart: () => undefined,
         onStoryToScriptMinimizedChange: () => undefined,
         onScriptToStoryboardMinimizedChange: () => undefined,
       }),
