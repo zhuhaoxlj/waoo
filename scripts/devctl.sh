@@ -178,6 +178,9 @@ stop_pid_process() {
   pid="$(read_pid || true)"
   if [[ -n "${pid}" ]] && is_pid_running "${pid}"; then
     print_info "停止开发服务，PID=${pid}"
+    # npm run dev is started in a new session; stop the whole process group first
+    # so concurrently children cannot keep writing to the old log file.
+    kill -- "-${pid}" >/dev/null 2>&1 || true
     kill "${pid}" >/dev/null 2>&1 || true
 
     for _ in {1..15}; do
@@ -189,18 +192,76 @@ stop_pid_process() {
 
     if is_pid_running "${pid}"; then
       print_warn "常规停止超时，强制结束 PID=${pid}"
+      kill -9 -- "-${pid}" >/dev/null 2>&1 || true
       kill -9 "${pid}" >/dev/null 2>&1 || true
     fi
   fi
   rm -f "${PID_FILE}"
 }
 
+find_project_dev_pids() {
+  local pid
+  local cwd
+  local cmd
+  local patterns=(
+    "npm run dev"
+    "npm run dev:next"
+    "npm run dev:worker"
+    "npm run dev:watchdog"
+    "npm run dev:board"
+    "concurrently --kill-others"
+    "next dev -H 0.0.0.0"
+    "next dev --turbopack -H 0.0.0.0"
+    "node_modules/.bin/next dev"
+    "tsx watch --env-file=.env src/lib/workers/index.ts"
+    "tsx watch --env-file=.env scripts/watchdog.ts"
+    "tsx watch --env-file=.env scripts/bull-board.ts"
+    "src/lib/workers/index.ts"
+    "scripts/watchdog.ts"
+    "scripts/bull-board.ts"
+  )
+
+  for pattern in "${patterns[@]}"; do
+    while read -r pid; do
+      [[ -n "${pid}" ]] || continue
+      [[ "${pid}" == "$$" ]] && continue
+      cwd="$(readlink "/proc/${pid}/cwd" 2>/dev/null || true)"
+      cmd="$(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)"
+      if [[ "${cwd}" == "${PROJECT_DIR}" || "${cmd}" == *"${PROJECT_DIR}"* ]]; then
+        echo "${pid}"
+      fi
+    done < <(pgrep -f "${pattern}" 2>/dev/null || true)
+  done | sort -u
+}
+
 stop_fallback_processes() {
-  pkill -f "next dev --turbopack -H 0.0.0.0" >/dev/null 2>&1 || true
-  pkill -f "tsx watch --env-file=.env src/lib/workers/index.ts" >/dev/null 2>&1 || true
-  pkill -f "tsx watch --env-file=.env scripts/watchdog.ts" >/dev/null 2>&1 || true
-  pkill -f "tsx watch --env-file=.env scripts/bull-board.ts" >/dev/null 2>&1 || true
-  pkill -f "concurrently --kill-others" >/dev/null 2>&1 || true
+  local pids
+  pids="$(find_project_dev_pids || true)"
+  if [[ -z "${pids}" ]]; then
+    return 0
+  fi
+
+  print_info "清理残留开发进程"
+  while read -r pid; do
+    [[ -n "${pid}" ]] || continue
+    kill -- "-${pid}" >/dev/null 2>&1 || true
+    kill "${pid}" >/dev/null 2>&1 || true
+  done <<< "${pids}"
+
+  for _ in {1..8}; do
+    if [[ -z "$(find_project_dev_pids || true)" ]]; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  print_warn "残留开发进程常规停止超时，强制清理"
+  pids="$(find_project_dev_pids || true)"
+  while read -r pid; do
+    [[ -n "${pid}" ]] || continue
+    kill -9 -- "-${pid}" >/dev/null 2>&1 || true
+    kill -9 "${pid}" >/dev/null 2>&1 || true
+  done <<< "${pids}"
 }
 
 stop_dev_process() {
