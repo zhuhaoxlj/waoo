@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslations } from 'next-intl'
 import { AppIcon } from '@/components/ui/icons'
 import { shouldShowError } from '@/lib/error-utils'
@@ -143,7 +144,7 @@ export function PropEditModal({
     }
   }
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 glass-overlay flex items-center justify-center z-50 p-4">
       <div className="glass-surface-modal max-w-2xl w-full max-h-[80vh] flex flex-col">
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
@@ -230,4 +231,8 @@ export function PropEditModal({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return modalContent
+
+  return createPortal(modalContent, document.body)
 }

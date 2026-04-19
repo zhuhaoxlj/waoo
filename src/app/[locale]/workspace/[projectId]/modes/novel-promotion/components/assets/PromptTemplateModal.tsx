@@ -1,5 +1,6 @@
 'use client'
 
+import { createPortal } from 'react-dom'
 import { AppIcon } from '@/components/ui/icons'
 import { useTranslations } from 'next-intl'
 
@@ -37,9 +38,9 @@ export default function PromptTemplateModal({
 
   if (!isOpen) return null
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-[130] flex items-center justify-center glass-overlay animate-fadeIn"
+      className="fixed inset-0 z-[160] flex items-center justify-center glass-overlay animate-fadeIn"
       onClick={(event) => {
         if (event.target === event.currentTarget && !saving) onClose()
       }}
@@ -112,4 +113,8 @@ export default function PromptTemplateModal({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return modalContent
+
+  return createPortal(modalContent, document.body)
 }

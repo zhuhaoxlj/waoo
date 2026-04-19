@@ -1,5 +1,6 @@
 'use client'
 
+import { createPortal } from 'react-dom'
 import ImagePreviewModal from '@/components/ui/ImagePreviewModal'
 import ImageEditModal from './ImageEditModal'
 import VoiceDesignDialog from '../voice/VoiceDesignDialog'
@@ -136,7 +137,7 @@ export default function AssetsStageModals({
   copyFromGlobalTarget,
   isGlobalCopyInFlight,
 }: AssetsStageModalsProps) {
-  return (
+  const modals = (
     <>
       {previewImage && <ImagePreviewModal imageUrl={previewImage} onClose={onClosePreview} />}
 
@@ -269,5 +270,14 @@ export default function AssetsStageModals({
         />
       )}
     </>
+  )
+
+  if (typeof document === 'undefined') return modals
+
+  return createPortal(
+    <div className="relative z-[150] pointer-events-none [&>*]:pointer-events-auto">
+      {modals}
+    </div>,
+    document.body,
   )
 }

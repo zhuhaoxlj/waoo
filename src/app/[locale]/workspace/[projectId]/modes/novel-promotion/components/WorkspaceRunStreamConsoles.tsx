@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import LLMStageStreamCard, { type LLMStageViewItem } from '@/components/llm-console/LLMStageStreamCard'
 import { useToast } from '@/contexts/ToastContext'
 import { useLocale, useTranslations } from 'next-intl'
@@ -341,7 +342,7 @@ export default function WorkspaceRunStreamConsoles({
     }
   }
 
-  return (
+  const content = (
     <>
       {!hideMinimizedBadges && showStoryToScriptConsole && storyToScriptConsoleMinimized && storyToScriptActive && (
         <button
@@ -498,4 +499,8 @@ export default function WorkspaceRunStreamConsoles({
       />
     </>
   )
+
+  if (typeof document === 'undefined') return content
+
+  return createPortal(content, document.body)
 }
