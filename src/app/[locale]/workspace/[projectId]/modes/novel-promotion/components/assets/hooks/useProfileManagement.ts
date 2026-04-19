@@ -97,14 +97,14 @@ export function useProfileManagement({
 
             const result = await analyzeGlobalCharactersStream.run({ onlyCharacters: true })
             if (result.status !== 'completed') {
-                throw new Error(result.errorMessage || t('characterProfile.regenerateSelectedFailed', { error: t('common.unknownError') }))
+                throw new Error(result.errorMessage || t('characterProfile.reanalysisFailedShort'))
             }
 
             await Promise.resolve(refreshAssets())
             showToast?.(t('characterProfile.regenerateSelectedSuccess', { count: characterIds.length }), 'success')
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : t('common.unknownError')
-            showToast?.(t('characterProfile.regenerateSelectedFailed', { error: message }), 'error')
+            showToast?.(t('characterProfile.reanalysisFailed', { error: message }), 'error')
         } finally {
             setBatchRegeneratingLocal(false)
         }

@@ -352,7 +352,11 @@
         "regeneratingSelected": "Regenerating...",
         "regenerateSelectedConfirm": "Regenerating will overwrite the selected character info for {names}. Continue?",
         "regenerateSelectedSuccess": "Re-generated analysis for {count} characters",
-        "regenerateSelectedFailed": "Regeneration failed: {error}"
+        "regenerateSelectedFailed": "Regeneration failed: {error}",
+        "reanalysisConsoleTitle": "Character Profile Reanalysis",
+        "reanalysisConsoleSubtitle": "Reanalyzing selected character profiles",
+        "reanalysisFailedShort": "Character profile reanalysis failed",
+        "reanalysisFailed": "Character profile reanalysis failed: {error}"
     },
     "imageEdit": {
         "editCharacterImage": "Edit Character Image",

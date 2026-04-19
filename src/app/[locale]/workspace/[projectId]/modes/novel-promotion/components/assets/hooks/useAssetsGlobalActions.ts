@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { logInfo as _ulogInfo, logError as _ulogError } from '@/lib/logging/core'
 import { resolveTaskPresentationState } from '@/lib/task/presentation'
 import { useAnalyzeProjectGlobalAssets } from '@/lib/query/hooks'
@@ -85,7 +85,8 @@ export function useAssetsGlobalActions({
   const hasTriggeredGlobalAnalyze = useRef(false)
   const lastRunningTaskIdRef = useRef<string | null>(null)
   const lastHandledTaskIdRef = useRef<string | null>(null)
-  const isSubmittingRef = useRef(false)
+  const [trackedGlobalAnalyzeTaskId, setTrackedGlobalAnalyzeTaskId] = useState<string | null>(null)
+  const [isSubmittingGlobalAnalyze, setIsSubmittingGlobalAnalyze] = useState(false)
   const globalAnalyzeTaskStateQuery = useTaskTargetStateMap(
     projectId,
     [{
@@ -99,7 +100,10 @@ export function useAssetsGlobalActions({
     },
   )
   const globalAnalyzeTaskState = globalAnalyzeTaskStateQuery.getState('NovelPromotionProject', projectId)
-  const isGlobalAnalyzing = isGlobalAnalyzeTaskRunning(globalAnalyzeTaskState)
+  const isTrackedGlobalAnalyzeTaskRunning = trackedGlobalAnalyzeTaskId !== null
+    && isGlobalAnalyzeTaskRunning(globalAnalyzeTaskState)
+    && globalAnalyzeTaskState?.runningTaskId === trackedGlobalAnalyzeTaskId
+  const isGlobalAnalyzing = isSubmittingGlobalAnalyze || isTrackedGlobalAnalyzeTaskRunning
 
   const globalAnalyzingState = useMemo(() => {
     if (!isGlobalAnalyzing) return null
@@ -112,10 +116,10 @@ export function useAssetsGlobalActions({
   }, [globalAnalyzeTaskState?.intent, globalAnalyzeTaskState?.phase, isGlobalAnalyzing])
 
   const handleGlobalAnalyze = useCallback(async () => {
-    if (isGlobalAnalyzing || isSubmittingRef.current) return
+    if (isGlobalAnalyzing || isSubmittingGlobalAnalyze) return
 
     try {
-      isSubmittingRef.current = true
+      setIsSubmittingGlobalAnalyze(true)
       upsertTaskTargetOverlay(queryClient, {
         projectId,
         targetType: 'NovelPromotionProject',
@@ -127,6 +131,7 @@ export function useAssetsGlobalActions({
 
       const submission = await analyzeGlobalAssets.mutateAsync(undefined)
       lastRunningTaskIdRef.current = submission.taskId
+      setTrackedGlobalAnalyzeTaskId(submission.taskId)
     } catch (error: unknown) {
       clearTaskTargetOverlay(queryClient, {
         projectId,
@@ -135,18 +140,33 @@ export function useAssetsGlobalActions({
       })
       _ulogError('Global analyze error:', error)
       showToast(`${t('toolbar.globalAnalyzeFailed')}: ${getErrorMessage(error)}`, 'error', 5000)
-    } finally {
-      isSubmittingRef.current = false
+      setTrackedGlobalAnalyzeTaskId(null)
+      lastRunningTaskIdRef.current = null
+      lastHandledTaskIdRef.current = null
+      setIsSubmittingGlobalAnalyze(false)
     }
-  }, [analyzeGlobalAssets, isGlobalAnalyzing, projectId, queryClient, showToast, t])
+  }, [analyzeGlobalAssets, isGlobalAnalyzing, isSubmittingGlobalAnalyze, projectId, queryClient, showToast, t])
 
   useEffect(() => {
-    if (isGlobalAnalyzing && globalAnalyzeTaskState?.runningTaskId) {
+    if (!trackedGlobalAnalyzeTaskId) return
+    if (globalAnalyzeTaskState?.runningTaskId === trackedGlobalAnalyzeTaskId && isGlobalAnalyzeTaskRunning(globalAnalyzeTaskState)) {
       lastRunningTaskIdRef.current = globalAnalyzeTaskState.runningTaskId
+      if (isSubmittingGlobalAnalyze) {
+        setIsSubmittingGlobalAnalyze(false)
+      }
     }
-  }, [globalAnalyzeTaskState?.runningTaskId, isGlobalAnalyzing])
+  }, [globalAnalyzeTaskState, isSubmittingGlobalAnalyze, trackedGlobalAnalyzeTaskId])
 
   useEffect(() => {
+    if (!trackedGlobalAnalyzeTaskId || !isSubmittingGlobalAnalyze) return
+    if (globalAnalyzeTaskState?.phase && globalAnalyzeTaskState.phase !== 'idle') {
+      setIsSubmittingGlobalAnalyze(false)
+    }
+  }, [globalAnalyzeTaskState?.phase, isSubmittingGlobalAnalyze, trackedGlobalAnalyzeTaskId])
+
+  useEffect(() => {
+    if (isSubmittingGlobalAnalyze) return
+
     const completion = resolveGlobalAnalyzeCompletion(lastRunningTaskIdRef.current, globalAnalyzeTaskState)
     if (completion.status === 'running' || completion.status === 'idle' || !completion.finishedTaskId) {
       return
@@ -157,6 +177,8 @@ export function useAssetsGlobalActions({
 
     lastHandledTaskIdRef.current = completion.finishedTaskId
     lastRunningTaskIdRef.current = null
+    setTrackedGlobalAnalyzeTaskId(null)
+    setIsSubmittingGlobalAnalyze(false)
 
     void (async () => {
       if (completion.status === 'failed') {
@@ -187,7 +209,7 @@ export function useAssetsGlobalActions({
         showToast(`${t('toolbar.globalAnalyzeFailed')}: ${getErrorMessage(error)}`, 'error', 5000)
       }
     })()
-  }, [globalAnalyzeTaskState, onRefresh, showToast, t])
+  }, [globalAnalyzeTaskState, isSubmittingGlobalAnalyze, onRefresh, showToast, t])
 
   useEffect(() => {
     if (!triggerGlobalAnalyze || hasTriggeredGlobalAnalyze.current || isGlobalAnalyzing) {

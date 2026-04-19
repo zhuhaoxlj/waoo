@@ -352,7 +352,11 @@
         "regeneratingSelected": "重新生成中...",
         "regenerateSelectedConfirm": "重新生成后会覆盖掉已选择的 {names} 角色信息。是否确认生成？",
         "regenerateSelectedSuccess": "已重新生成 {count} 个角色的分析结果",
-        "regenerateSelectedFailed": "重新生成失败: {error}"
+        "regenerateSelectedFailed": "重新生成失败: {error}",
+        "reanalysisConsoleTitle": "角色档案重分析",
+        "reanalysisConsoleSubtitle": "重新分析已选角色档案",
+        "reanalysisFailedShort": "角色档案重分析失败",
+        "reanalysisFailed": "角色档案重分析失败: {error}"
     },
     "imageEdit": {
         "editCharacterImage": "编辑人物图片",

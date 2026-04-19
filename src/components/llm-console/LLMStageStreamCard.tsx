@@ -26,6 +26,8 @@ export type LLMStageStreamCardProps = {
   title: string
   subtitle?: string
   stages: LLMStageViewItem[]
+  stageCountOverride?: number
+  currentStepOverride?: number
   activeStageId: string
   selectedStageId?: string
   onSelectStage?: (stageId: string) => void
@@ -170,6 +172,8 @@ export default function LLMStageStreamCard({
   title,
   subtitle,
   stages,
+  stageCountOverride,
+  currentStepOverride,
   activeStageId,
   selectedStageId,
   onSelectStage,
@@ -224,7 +228,9 @@ export default function LLMStageStreamCard({
   )
   const activeStage = stages[activeIndex] || stages[0]
   const outputStage = stages.find((stage) => stage.id === outputStageId) || activeStage
-  const stageCount = stages.length
+  const stageCount = typeof stageCountOverride === 'number'
+    ? Math.max(0, Math.floor(stageCountOverride))
+    : stages.length
   const completedCount = stages.filter((stage) => stage.status === 'completed' || stage.status === 'stale').length
   const hasPendingWork = stages.some((stage) =>
     stage.status === 'processing' ||
@@ -232,11 +238,14 @@ export default function LLMStageStreamCard({
     stage.status === 'pending' ||
     stage.status === 'blocked',
   )
-  const currentStep = stageCount === 0
+  const derivedCurrentStep = stageCount === 0
     ? 0
     : hasPendingWork
       ? Math.min(stageCount, Math.max(1, completedCount))
       : stageCount
+  const currentStep = typeof currentStepOverride === 'number'
+    ? Math.max(0, Math.min(stageCount, Math.floor(currentStepOverride)))
+    : derivedCurrentStep
   const normalizedOverallProgress =
     typeof overallProgress === 'number'
       ? clampProgress(overallProgress)
