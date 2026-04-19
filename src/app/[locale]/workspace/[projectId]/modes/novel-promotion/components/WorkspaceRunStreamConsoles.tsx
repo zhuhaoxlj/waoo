@@ -9,6 +9,7 @@ import {
   resolveStoryToScriptStageId,
   type StoryToScriptEditableStageId,
 } from '@/lib/novel-promotion/story-to-script-stage-prompts'
+import PromptTemplateModal from './assets/PromptTemplateModal'
 
 type RunStreamStep = {
   id: string
@@ -475,90 +476,26 @@ export default function WorkspaceRunStreamConsoles({
         </div>
       )}
 
-      {(promptEditor || promptEditorLoading || promptEditorError) && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/35 px-4">
-          <div className="glass-surface-modal w-full max-w-4xl overflow-hidden rounded-2xl">
-            <div className="border-b border-[var(--glass-stroke-base)] px-5 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-[var(--glass-text-primary)]">
-                    {promptEditor?.title || t('runConsole.promptEditorTitle')}
-                  </h3>
-                  <p className="mt-1 text-sm text-[var(--glass-text-secondary)]">
-                    {t('runConsole.promptEditorSubtitle')}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPromptEditor(null)
-                    setPromptEditorDraft('')
-                    setPromptEditorError('')
-                  }}
-                  className="glass-btn-base glass-btn-secondary rounded-lg px-3 py-1.5 text-xs"
-                >
-                  {t('runConsole.close')}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4 px-5 py-4">
-              {promptEditorLoading ? (
-                <div className="rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-surface)] px-4 py-8 text-sm text-[var(--glass-text-secondary)]">
-                  {t('runConsole.promptEditorLoading')}
-                </div>
-              ) : (
-                <>
-                  <div className="grid gap-3 text-xs text-[var(--glass-text-tertiary)] md:grid-cols-2">
-                    <div className="rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-surface)] px-3 py-2">
-                      {t('runConsole.promptEditorSource')}: {promptEditor?.source === 'override' ? t('runConsole.promptEditorSourceOverride') : t('runConsole.promptEditorSourceDefault')}
-                    </div>
-                    <div className="rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-surface)] px-3 py-2 break-all">
-                      {t('runConsole.promptEditorPath')}: {promptEditor?.filePath || '-'}
-                    </div>
-                  </div>
-                  <textarea
-                    value={promptEditorDraft}
-                    onChange={(event) => setPromptEditorDraft(event.target.value)}
-                    className="glass-textarea-base app-scrollbar h-[52vh] w-full resize-none px-4 py-3 text-sm"
-                    placeholder={t('runConsole.promptEditorPlaceholder')}
-                  />
-                </>
-              )}
-
-              {promptEditorError && (
-                <div className="rounded-lg bg-[var(--glass-tone-danger-bg)] px-4 py-3 text-sm text-[var(--glass-tone-danger-fg)]">
-                  {promptEditorError}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-[var(--glass-stroke-base)] px-5 py-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setPromptEditor(null)
-                  setPromptEditorDraft('')
-                  setPromptEditorError('')
-                }}
-                className="glass-btn-base glass-btn-secondary rounded-lg px-3 py-1.5 text-xs"
-              >
-                {t('runConsole.cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSavePromptEditor()
-                }}
-                disabled={promptEditorLoading || promptEditorSaving || !promptEditor}
-                className="glass-btn-base glass-btn-primary rounded-lg px-3 py-1.5 text-xs disabled:opacity-60"
-              >
-                {promptEditorSaving ? t('runConsole.saving') : t('runConsole.savePrompt')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PromptTemplateModal
+        isOpen={!!(promptEditor || promptEditorLoading || promptEditorError)}
+        title={promptEditor?.title || t('runConsole.promptEditorTitle')}
+        subtitle={t('runConsole.promptEditorSubtitle')}
+        draft={promptEditorDraft}
+        source={promptEditor?.source === 'override' ? 'override' : 'default'}
+        filePath={promptEditor?.filePath || ''}
+        loading={promptEditorLoading}
+        saving={promptEditorSaving}
+        error={promptEditorError}
+        onChange={setPromptEditorDraft}
+        onClose={() => {
+          setPromptEditor(null)
+          setPromptEditorDraft('')
+          setPromptEditorError('')
+        }}
+        onSave={() => {
+          void handleSavePromptEditor()
+        }}
+      />
     </>
   )
 }

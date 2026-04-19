@@ -4,16 +4,7 @@ import TaskStatusInline from '@/components/task/TaskStatusInline'
 import type { TaskPresentationState } from '@/lib/task/presentation'
 import { AppIcon } from '@/components/ui/icons'
 
-type ToastType = 'success' | 'warning' | 'error'
-
-interface ToastState {
-  message: string
-  type: ToastType
-}
-
 interface AssetsStageStatusOverlaysProps {
-  toast: ToastState | null
-  onCloseToast: () => void
   isGlobalAnalyzing: boolean
   globalAnalyzingState: TaskPresentationState | null
   globalAnalyzingTitle: string
@@ -22,8 +13,6 @@ interface AssetsStageStatusOverlaysProps {
 }
 
 export default function AssetsStageStatusOverlays({
-  toast,
-  onCloseToast,
   isGlobalAnalyzing,
   globalAnalyzingState,
   globalAnalyzingTitle,
@@ -32,25 +21,6 @@ export default function AssetsStageStatusOverlays({
 }: AssetsStageStatusOverlaysProps) {
   return (
     <>
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right">
-          <div
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
-              toast.type === 'success'
-                ? 'bg-[var(--glass-tone-success-fg)] text-white'
-                : toast.type === 'warning'
-                  ? 'bg-[var(--glass-tone-warning-fg)] text-white'
-                  : 'bg-[var(--glass-tone-danger-fg)] text-white'
-            }`}
-          >
-            <span className="text-sm font-medium">{toast.message}</span>
-            <button onClick={onCloseToast} className="ml-2 hover:opacity-80">
-              <AppIcon name="close" className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {isGlobalAnalyzing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center glass-overlay">
           <div className="glass-surface-modal p-8 max-w-md mx-4 animate-in zoom-in-95 duration-300">

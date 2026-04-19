@@ -57,6 +57,11 @@ const messages = {
       copyFromGlobal: '从资产中心导入',
       delete: '删除角色',
     },
+    characterProfile: {
+      editAnalyzePrompt: '编辑提示词',
+      regenerateSelected: '重新生成 ({count})',
+      regeneratingSelected: '重新生成中...',
+    },
   },
 } as const
 
@@ -128,6 +133,8 @@ describe('CharacterSection actions', () => {
         batchConfirming: false,
         batchConfirmingState: null,
         onBatchConfirm: () => undefined,
+        onEditAnalyzePrompt: () => undefined,
+        onRegenerateProfiles: () => undefined,
         onEditProfile: () => undefined,
         onConfirmProfile: () => undefined,
         onUseExistingProfile: () => undefined,

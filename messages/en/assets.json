@@ -338,12 +338,21 @@
         "confirmSuccessGenerating": "✓ Profile confirmed. Visual description generation started",
         "confirmFailed": "Confirm failed: {error}",
         "noPendingCharacters": "No pending characters to confirm",
+        "noSelectedCharacters": "Select at least one character first",
         "batchConfirmPrompt": "Generate visual descriptions for {count} characters?",
         "batchConfirmSuccess": "✓ Visual descriptions generated for {count} characters",
         "batchConfirmFailed": "Batch confirmation failed: {error}",
         "deleteConfirm": "Delete this character? This action cannot be undone.",
         "deleteSuccess": "✓ Character deleted",
-        "deleteFailed": "Delete failed: {error}"
+        "deleteFailed": "Delete failed: {error}",
+        "select": "Select",
+        "editAnalyzePrompt": "Edit Prompt",
+        "editAnalyzePromptSaved": "Character analysis prompt saved",
+        "regenerateSelected": "Regenerate ({count})",
+        "regeneratingSelected": "Regenerating...",
+        "regenerateSelectedConfirm": "Regenerating will overwrite the selected character info for {names}. Continue?",
+        "regenerateSelectedSuccess": "Re-generated analysis for {count} characters",
+        "regenerateSelectedFailed": "Regeneration failed: {error}"
     },
     "imageEdit": {
         "editCharacterImage": "Edit Character Image",

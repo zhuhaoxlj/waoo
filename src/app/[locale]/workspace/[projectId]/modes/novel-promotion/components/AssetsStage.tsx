@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useToast } from '@/contexts/ToastContext'
 /**
  * 资产确认阶段 - 小说推文模式专用
  * 包含TTS生成和资产分析
@@ -50,6 +51,8 @@ import AssetToolbar from './assets/AssetToolbar'
 import AssetFilterBar, { type AssetKindFilter } from './assets/AssetFilterBar'
 import AssetsStageStatusOverlays from './assets/AssetsStageStatusOverlays'
 import AssetsStageModals from './assets/AssetsStageModals'
+import CharacterAnalysisPromptModal from './assets/CharacterAnalysisPromptModal'
+import CharacterReanalysisConsole from './assets/CharacterReanalysisConsole'
 
 interface AssetsStageProps {
   projectId: string
@@ -115,6 +118,7 @@ export default function AssetsStage({
   }, [generateCharacterImage, generateLocationImage, propAssetActions])
 
   const t = useTranslations('assets')
+  const { showToast } = useToast()
   // 计算资产总数
   const totalAppearances = characters.reduce((sum, character) => sum + character.variants.length, 0)
   const totalLocations = locations.length
@@ -123,9 +127,9 @@ export default function AssetsStage({
 
   // 本地 UI 状态
   const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null)
   const [kindFilter, setKindFilter] = useState<AssetKindFilter>('all')
   const [episodeFilter, setEpisodeFilter] = useState<string | null>(null)
+  const [showCharacterPromptEditor, setShowCharacterPromptEditor] = useState(false)
 
   // 获取剧集列表
   const { episodes } = useEpisodes(projectId)
@@ -194,11 +198,6 @@ export default function AssetsStage({
   }
 
   // 显示提示
-  const showToast = useCallback((message: string, type: 'success' | 'warning' | 'error' = 'success', duration = 3000) => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), duration)
-  }, [])
-
   // === 使用提取的 Hooks ===
 
   // 🔥 V6.5 重构：hooks 现在内部订阅 useProjectAssets，不再需要传 characters/locations
@@ -324,10 +323,13 @@ export default function AssetsStage({
     isConfirmingCharacter,
     deletingCharacterId,
     batchConfirming,
+    batchRegeneratingLocal,
+    analyzeGlobalCharactersStream,
     editingProfile,
     handleEditProfile,
     handleConfirmProfile,
     handleBatchConfirm,
+    handleRegenerateProfiles,
     handleDeleteProfile,
     setEditingProfile
   } = useProfileManagement({
@@ -368,14 +370,14 @@ export default function AssetsStage({
   return (
     <div className="space-y-4">
       <AssetsStageStatusOverlays
-        toast={toast}
-        onCloseToast={() => setToast(null)}
         isGlobalAnalyzing={isGlobalAnalyzing}
         globalAnalyzingState={globalAnalyzingState}
         globalAnalyzingTitle={t('toolbar.globalAnalyzing')}
         globalAnalyzingHint={t('toolbar.globalAnalyzingHint')}
         globalAnalyzingTip={t('toolbar.globalAnalyzingTip')}
       />
+
+      <CharacterReanalysisConsole stream={analyzeGlobalCharactersStream} />
 
       {/* 资产工具栏 */}
       <AssetToolbar
@@ -440,10 +442,13 @@ export default function AssetsStage({
             batchConfirming={batchConfirming}
             batchConfirmingState={batchConfirmingState}
             onBatchConfirm={handleBatchConfirm}
+            onEditAnalyzePrompt={() => setShowCharacterPromptEditor(true)}
+            onRegenerateProfiles={handleRegenerateProfiles}
             onEditProfile={handleEditProfile}
             onConfirmProfile={handleConfirmProfile}
             onUseExistingProfile={handleCopyFromGlobal}
             onDeleteProfile={handleDeleteProfile}
+            isRegeneratingProfiles={batchRegeneratingLocal}
           />
       )}
       {(kindFilter === 'all' || kindFilter === 'location') && (
@@ -531,6 +536,12 @@ export default function AssetsStage({
         editingProfile={editingProfile}
         copyFromGlobalTarget={copyFromGlobalTarget}
         isGlobalCopyInFlight={isGlobalCopyInFlight}
+      />
+
+      <CharacterAnalysisPromptModal
+        isOpen={showCharacterPromptEditor}
+        onClose={() => setShowCharacterPromptEditor(false)}
+        onSaved={() => showToast(t('characterProfile.editAnalyzePromptSaved'), 'success')}
       />
     </div>
   )

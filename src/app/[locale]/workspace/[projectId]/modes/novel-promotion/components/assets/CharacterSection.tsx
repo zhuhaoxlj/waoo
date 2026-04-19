@@ -60,10 +60,13 @@ interface CharacterSectionProps {
     batchConfirming: boolean
     batchConfirmingState: TaskPresentationState | null
     onBatchConfirm: () => void
+    onEditAnalyzePrompt: () => void
+    onRegenerateProfiles: (characterIds: string[], characterNames: string[]) => void
     onEditProfile: (characterId: string, characterName: string) => void
     onConfirmProfile: (characterId: string) => void
     onUseExistingProfile: (characterId: string) => void
     onDeleteProfile: (characterId: string) => void
+    isRegeneratingProfiles?: boolean
 }
 
 export default function CharacterSection({
@@ -100,10 +103,13 @@ export default function CharacterSection({
     batchConfirming,
     batchConfirmingState,
     onBatchConfirm,
+    onEditAnalyzePrompt,
+    onRegenerateProfiles,
     onEditProfile,
     onConfirmProfile,
     onUseExistingProfile,
     onDeleteProfile,
+    isRegeneratingProfiles = false,
 }: CharacterSectionProps) {
     const t = useTranslations('assets')
     const analyzingAssetsState = isAnalyzingAssets
@@ -130,6 +136,7 @@ export default function CharacterSection({
         [allCharacters, filterIds, unconfirmedIds],
     )
     const [highlightedCharacterId, setHighlightedCharacterId] = useState<string | null>(null)
+    const [selectedUnconfirmedIds, setSelectedUnconfirmedIds] = useState<Set<string>>(new Set())
     const scrollAnimationRef = useRef<number | null>(null)
 
     const totalAppearances = characters.reduce((sum, char) => sum + (char.appearances?.length || 0), 0)
@@ -188,6 +195,35 @@ export default function CharacterSection({
         }
     }, [characters, focusCharacterId, focusCharacterRequestId])
 
+    useEffect(() => {
+        setSelectedUnconfirmedIds((previous) => {
+            const next = new Set(
+                Array.from(previous).filter((id) => unconfirmedCharacters.some((character) => character.id === id)),
+            )
+            return next.size === previous.size ? previous : next
+        })
+    }, [unconfirmedCharacters])
+
+    const toggleUnconfirmedSelection = (characterId: string) => {
+        setSelectedUnconfirmedIds((previous) => {
+            const next = new Set(previous)
+            if (next.has(characterId)) {
+                next.delete(characterId)
+            } else {
+                next.add(characterId)
+            }
+            return next
+        })
+    }
+
+    const handleRegenerateSelected = () => {
+        const selectedCharacters = unconfirmedCharacters.filter((character) => selectedUnconfirmedIds.has(character.id))
+        onRegenerateProfiles(
+            selectedCharacters.map((character) => character.id),
+            selectedCharacters.map((character) => character.name),
+        )
+    }
+
     return (
         <div className="glass-surface p-6">
             <div className="flex items-center justify-between mb-6">
@@ -225,17 +261,34 @@ export default function CharacterSection({
                             <span className="text-sm font-semibold text-[var(--glass-text-primary)]">{t('stage.pendingProfilesBanner')}</span>
                             <span className="text-xs text-[var(--glass-text-tertiary)]">{t('stage.pendingProfilesHint')}</span>
                         </div>
-                        <button
-                            onClick={onBatchConfirm}
-                            disabled={batchConfirming}
-                            className="glass-btn-base glass-btn-primary px-3 py-1.5 text-sm disabled:opacity-50 flex items-center gap-1.5"
-                        >
-                            {batchConfirming ? (
-                                <TaskStatusInline state={batchConfirmingState} className="text-white [&>span]:text-white [&_svg]:text-white" />
-                            ) : (
-                                t('stage.confirmAll', { count: unconfirmedCharacters.length })
-                            )}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={onEditAnalyzePrompt}
+                                className="glass-btn-base glass-btn-secondary px-3 py-1.5 text-sm"
+                            >
+                                {t('characterProfile.editAnalyzePrompt')}
+                            </button>
+                            <button
+                                onClick={handleRegenerateSelected}
+                                disabled={isRegeneratingProfiles || selectedUnconfirmedIds.size === 0}
+                                className="glass-btn-base glass-btn-secondary px-3 py-1.5 text-sm disabled:opacity-50"
+                            >
+                                {isRegeneratingProfiles
+                                    ? t('characterProfile.regeneratingSelected')
+                                    : t('characterProfile.regenerateSelected', { count: selectedUnconfirmedIds.size })}
+                            </button>
+                            <button
+                                onClick={onBatchConfirm}
+                                disabled={batchConfirming}
+                                className="glass-btn-base glass-btn-primary px-3 py-1.5 text-sm disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                                {batchConfirming ? (
+                                    <TaskStatusInline state={batchConfirmingState} className="text-white [&>span]:text-white [&_svg]:text-white" />
+                                ) : (
+                                    t('stage.confirmAll', { count: unconfirmedCharacters.length })
+                                )}
+                            </button>
+                        </div>
                     </div>
                     {/* 待确认卡片网格 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -254,6 +307,8 @@ export default function CharacterSection({
                                     onDelete={() => onDeleteProfile(character.id)}
                                     isConfirming={isConfirmingCharacter(character.id)}
                                     isDeleting={deletingCharacterId === character.id}
+                                    selected={selectedUnconfirmedIds.has(character.id)}
+                                    onToggleSelected={() => toggleUnconfirmedSelection(character.id)}
                                 />
                             )
                         })}

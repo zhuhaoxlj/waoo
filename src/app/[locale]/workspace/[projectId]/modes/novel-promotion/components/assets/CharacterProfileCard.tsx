@@ -21,6 +21,8 @@ interface CharacterProfileCardProps {
     onDelete?: () => void
     isConfirming?: boolean
     isDeleting?: boolean
+    selected?: boolean
+    onToggleSelected?: () => void
 }
 
 /**
@@ -56,7 +58,9 @@ export default function CharacterProfileCard({
     onUseExisting,
     onDelete,
     isConfirming = false,
-    isDeleting = false
+    isDeleting = false,
+    selected = false,
+    onToggleSelected,
 }: CharacterProfileCardProps) {
     const t = useTranslations('assets')
     const deletingState = isDeleting
@@ -82,11 +86,22 @@ export default function CharacterProfileCard({
     const tierStyle = roleLevel ? TIER_STYLES[roleLevel] : null
 
     return (
-        <div className="glass-surface overflow-hidden hover:shadow-md transition-shadow">
+        <div className={`glass-surface overflow-hidden hover:shadow-md transition-shadow ${selected ? 'ring-2 ring-[var(--glass-tone-info-fg)]' : ''}`}>
             <div className="p-5">
                 {/* 头部 */}
                 <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
+                        {onToggleSelected && (
+                            <label className="mb-2 inline-flex items-center gap-2 text-xs text-[var(--glass-text-tertiary)] cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selected}
+                                    onChange={onToggleSelected}
+                                    className="h-4 w-4 rounded border-[var(--glass-stroke-strong)] text-[var(--glass-tone-info-fg)]"
+                                />
+                                {t('select')}
+                            </label>
+                        )}
                         <h3 className="text-base font-bold text-[var(--glass-text-primary)] mb-1.5">{name}</h3>
                         <div className="flex items-center gap-2 flex-wrap">
                             <span

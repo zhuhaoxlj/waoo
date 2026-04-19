@@ -152,4 +152,33 @@ describe('worker analyze-global behavior', () => {
       },
     })
   })
+
+  it('onlyCharacters path -> skips location and prop parsing', async () => {
+    const job = buildJob()
+    job.data.payload = { onlyCharacters: true }
+
+    const result = await handleAnalyzeGlobalTask(job)
+
+    expect(parseMock.safeParseCharactersResponse).toHaveBeenCalledTimes(2)
+    expect(parseMock.safeParseLocationsResponse).not.toHaveBeenCalled()
+    expect(parseMock.safeParsePropsResponse).not.toHaveBeenCalled()
+    expect(persistMock.persistAnalyzeGlobalChunk).toHaveBeenCalledTimes(2)
+
+    expect(result).toEqual({
+      success: true,
+      stats: {
+        totalChunks: 2,
+        newCharacters: 2,
+        updatedCharacters: 0,
+        newLocations: 2,
+        newProps: 2,
+        skippedCharacters: 0,
+        skippedLocations: 0,
+        skippedProps: 0,
+        totalCharacters: 1,
+        totalLocations: 1,
+        totalProps: 0,
+      },
+    })
+  })
 })

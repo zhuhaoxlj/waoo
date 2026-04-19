@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toast Component</title>
+  <style>
+    :root {
+      --glass-tone-success-bg: rgba(30, 180, 98, 0.92);
+      --glass-tone-success-fg: #ffffff;
+      --glass-tone-danger-bg: rgba(220, 53, 69, 0.95);
+      --glass-tone-danger-fg: #ffffff;
+      --glass-tone-warning-bg: rgba(245, 158, 11, 0.95);
+      --glass-tone-warning-fg: #1f2937;
+      --glass-tone-info-bg: rgba(59, 130, 246, 0.95);
+      --glass-tone-info-fg: #ffffff;
+      --toast-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+      --toast-radius: 16px;
+      --toast-border: rgba(255, 255, 255, 0.18);
+      --page-bg-a: #eef4ff;
+      --page-bg-b: #f8fafc;
+      --page-ink: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--page-ink);
+      background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.16), transparent 24%),
+        linear-gradient(180deg, var(--page-bg-a), var(--page-bg-b));
+      display: grid;
+      place-items: center;
+      padding: 32px;
+    }
+
+    .demo-shell {
+      width: min(920px, 100%);
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 28px;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(18px);
+      padding: 28px;
+    }
+
+    .demo-title {
+      margin: 0 0 10px;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .demo-copy {
+      margin: 0 0 24px;
+      color: rgba(15, 23, 42, 0.7);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .demo-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .demo-button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 16px;
+      font: inherit;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
+      transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+    }
+
+    .demo-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 28px rgba(15, 23, 42, 0.16);
+    }
+
+    .demo-button:active {
+      transform: translateY(0);
+      box-shadow: 0 10px 18px rgba(15, 23, 42, 0.14);
+    }
+
+    .demo-button.success { background: linear-gradient(135deg, #10b981, #22c55e); }
+    .demo-button.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .demo-button.warning { background: linear-gradient(135deg, #f59e0b, #f97316); }
+    .demo-button.info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+    .toast-container {
+      position: fixed;
+      left: 24px;
+      bottom: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+      max-width: min(420px, calc(100vw - 32px));
+    }
+
+    .toast {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 58px;
+      padding: 14px 14px 14px 16px;
+      border-radius: var(--toast-radius);
+      border: 1px solid var(--toast-border);
+      box-shadow: var(--toast-shadow);
+      backdrop-filter: blur(10px);
+      transform: translateX(-24px);
+      opacity: 0;
+      animation: slide-in 220ms ease forwards;
+    }
+
+    .toast.closing {
+      animation: slide-out 180ms ease forwards;
+    }
+
+    .toast.success {
+      background: var(--glass-tone-success-bg);
+      color: var(--glass-tone-success-fg);
+    }
+
+    .toast.error {
+      background: var(--glass-tone-danger-bg);
+      color: var(--glass-tone-danger-fg);
+    }
+
+    .toast.warning {
+      background: var(--glass-tone-warning-bg);
+      color: var(--glass-tone-warning-fg);
+    }
+
+    .toast.info {
+      background: var(--glass-tone-info-bg);
+      color: var(--glass-tone-info-fg);
+    }
+
+    .toast-icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      display: grid;
+      place-items: center;
+    }
+
+    .toast-message {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .toast-close {
+      appearance: none;
+      border: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: inherit;
+      background: rgba(255, 255, 255, 0.16);
+      cursor: pointer;
+      transition: background 140ms ease, opacity 140ms ease;
+      opacity: 0.86;
+    }
+
+    .toast-close:hover {
+      background: rgba(255, 255, 255, 0.24);
+      opacity: 1;
+    }
+
+    .toast-close svg,
+    .toast-icon svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    @keyframes slide-in {
+      from {
+        opacity: 0;
+        transform: translateX(-24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes slide-out {
+      from {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateX(-18px);
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 16px;
+      }
+
+      .demo-shell {
+        padding: 20px;
+        border-radius: 22px;
+      }
+
+      .toast-container {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="demo-shell">
+    <h1 class="demo-title">Toast 组件示例</h1>
+    <p class="demo-copy">
+      独立原生 HTML 版本。保留项目默认 toast 的左下角浮出、玻璃态、颜色语义、关闭按钮和自动消失交互。
+    </p>
+
+    <div class="demo-actions">
+      <button class="demo-button success" data-type="success">成功 Toast</button>
+      <button class="demo-button error" data-type="error">错误 Toast</button>
+      <button class="demo-button warning" data-type="warning">警告 Toast</button>
+      <button class="demo-button info" data-type="info">信息 Toast</button>
+    </div>
+  </main>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    const toastContainer = document.getElementById('toastContainer');
+
+    const iconMap = {
+      success: '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4.5 10.5 8 14l7.5-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      error: '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+      warning: '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3.5 17 16H3L10 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 7.4v4.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.2" r="1" fill="currentColor"/></svg>',
+      info: '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M10 9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="6.3" r="1" fill="currentColor"/></svg>'
+    };
+
+    const messageMap = {
+      success: '角色分析提示词已保存',
+      error: '保存失败，请稍后重试',
+      warning: '全局分析进行中，请勿重复提交',
+      info: '新的任务已加入队列'
+    };
+
+    function closeToast(toast) {
+      if (!toast || toast.dataset.closing === 'true') return;
+      toast.dataset.closing = 'true';
+      toast.classList.add('closing');
+      window.setTimeout(() => toast.remove(), 180);
+    }
+
+    function showToast(message, type = 'info', duration = 5000) {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.setAttribute('role', 'status');
+
+      toast.innerHTML = `
+        <span class="toast-icon">${iconMap[type] || iconMap.info}</span>
+        <span class="toast-message"></span>
+        <button class="toast-close" type="button" aria-label="关闭">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M5 5l10 10M15 5 5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      `;
+
+      toast.querySelector('.toast-message').textContent = message;
+      toast.querySelector('.toast-close').addEventListener('click', () => closeToast(toast));
+
+      toastContainer.appendChild(toast);
+
+      if (duration > 0) {
+        window.setTimeout(() => closeToast(toast), duration);
+      }
+
+      return toast;
+    }
+
+    document.querySelectorAll('.demo-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        const type = button.dataset.type || 'info';
+        showToast(messageMap[type] || messageMap.info, type, type === 'warning' ? 7000 : 5000);
+      });
+    });
+
+    showToast(messageMap.success, 'success', 5000);
+  </script>
+</body>
+</html>

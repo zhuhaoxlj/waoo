@@ -158,11 +158,14 @@ function ToastContainer({
                     className={`
                         pointer-events-auto
                         flex items-center gap-3 
-                        px-4 py-3 
-                        rounded-xl
+                        min-h-[58px]
+                        px-4 py-3.5
+                        rounded-2xl
                         animate-in slide-in-from-right-full duration-300
                         max-w-md
                         border
+                        shadow-[0_18px_40px_rgba(15,23,42,0.18)]
+                        backdrop-blur-[10px]
                         ${getToastStyle(toast.type)}
                     `}
                 >
@@ -175,7 +178,7 @@ function ToastContainer({
                     {/* 关闭按钮 */}
                     <button
                         onClick={() => onDismiss(toast.id)}
-                        className="glass-btn-base glass-btn-ghost w-6 h-6 rounded-md p-0 opacity-70 hover:opacity-100 transition-opacity"
+                        className="w-7 h-7 rounded-md p-0 grid place-items-center bg-white/15 hover:bg-white/25 text-current opacity-85 hover:opacity-100 transition-all"
                     >
                         <AppIcon name="close" className="w-4 h-4" />
                     </button>
@@ -192,14 +195,14 @@ function ToastContainer({
 function getToastStyle(type: Toast['type']): string {
     switch (type) {
         case 'success':
-            return 'bg-[var(--glass-tone-success-bg)] text-[var(--glass-tone-success-fg)] border-[color:color-mix(in_srgb,var(--glass-tone-success-fg)_22%,transparent)]'
+            return 'bg-[rgba(30,180,98,0.92)] text-white border-white/20'
         case 'error':
-            return 'bg-[var(--glass-tone-danger-bg)] text-[var(--glass-tone-danger-fg)] border-[color:color-mix(in_srgb,var(--glass-tone-danger-fg)_22%,transparent)]'
+            return 'bg-[rgba(220,53,69,0.95)] text-white border-white/15'
         case 'warning':
-            return 'bg-[var(--glass-tone-warning-bg)] text-[var(--glass-tone-warning-fg)] border-[color:color-mix(in_srgb,var(--glass-tone-warning-fg)_22%,transparent)]'
+            return 'bg-[rgba(245,158,11,0.95)] text-slate-800 border-white/15'
         case 'info':
         default:
-            return 'bg-[var(--glass-tone-info-bg)] text-[var(--glass-tone-info-fg)] border-[color:color-mix(in_srgb,var(--glass-tone-info-fg)_22%,transparent)]'
+            return 'bg-[rgba(59,130,246,0.95)] text-white border-white/15'
     }
 }
 

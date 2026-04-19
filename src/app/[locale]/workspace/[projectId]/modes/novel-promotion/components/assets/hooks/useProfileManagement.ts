@@ -16,6 +16,7 @@ import {
     useDeleteProjectCharacter,
     useConfirmProjectCharacterProfile,
     useBatchConfirmProjectCharacterProfiles,
+    useAnalyzeGlobalRunStream,
 } from '@/lib/query/hooks'
 
 interface UseProfileManagementProps {
@@ -37,11 +38,13 @@ export function useProfileManagement({
     const deleteCharacterMutation = useDeleteProjectCharacter(projectId)
     const confirmCharacterProfileMutation = useConfirmProjectCharacterProfile(projectId)
     const batchConfirmProfilesMutation = useBatchConfirmProjectCharacterProfiles(projectId)
+    const analyzeGlobalCharactersStream = useAnalyzeGlobalRunStream({ projectId })
 
     // 🔥 修复：使用 Set 支持同时确认多个角色（即时反馈用；刷新后由 profileConfirmTaskRunning 接替）
     const [confirmingCharacterIds, setConfirmingCharacterIds] = useState<Set<string>>(new Set())
     const [deletingCharacterId, setDeletingCharacterId] = useState<string | null>(null)
     const [batchConfirmingLocal, setBatchConfirmingLocal] = useState(false)
+    const [batchRegeneratingLocal, setBatchRegeneratingLocal] = useState(false)
     const [editingProfile, setEditingProfile] = useState<{
         characterId: string
         characterName: string
@@ -69,6 +72,43 @@ export function useProfileManagement({
         // 如果有任何未确认角色正在运行档案确认任务，视为批量确认中
         return unconfirmedCharacters.some(char => char.profileConfirmTaskRunning)
     }, [batchConfirmingLocal, unconfirmedCharacters])
+
+    const handleRegenerateProfiles = useCallback(async (
+        characterIds: string[],
+        characterNames: string[],
+    ) => {
+        if (characterIds.length === 0) {
+            showToast?.(t('characterProfile.noSelectedCharacters'), 'warning')
+            return
+        }
+
+        const namesLabel = characterNames.join('、')
+        if (!confirm(t('characterProfile.regenerateSelectedConfirm', { names: namesLabel }))) {
+            return
+        }
+
+        setBatchRegeneratingLocal(true)
+        try {
+            for (const characterId of characterIds) {
+                await deleteCharacterMutation.mutateAsync(characterId)
+            }
+
+            await Promise.resolve(refreshAssets())
+
+            const result = await analyzeGlobalCharactersStream.run({ onlyCharacters: true })
+            if (result.status !== 'completed') {
+                throw new Error(result.errorMessage || t('characterProfile.regenerateSelectedFailed', { error: t('common.unknownError') }))
+            }
+
+            await Promise.resolve(refreshAssets())
+            showToast?.(t('characterProfile.regenerateSelectedSuccess', { count: characterIds.length }), 'success')
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : t('common.unknownError')
+            showToast?.(t('characterProfile.regenerateSelectedFailed', { error: message }), 'error')
+        } finally {
+            setBatchRegeneratingLocal(false)
+        }
+    }, [analyzeGlobalCharactersStream, deleteCharacterMutation, refreshAssets, showToast, t])
 
     // 打开编辑对话框
     const handleEditProfile = useCallback((characterId: string, characterName: string) => {
@@ -166,10 +206,13 @@ export function useProfileManagement({
         isConfirmingCharacter,
         deletingCharacterId,
         batchConfirming,
+        batchRegeneratingLocal,
+        analyzeGlobalCharactersStream,
         editingProfile,
         handleEditProfile,
         handleConfirmProfile,
         handleBatchConfirm,
+        handleRegenerateProfiles,
         handleDeleteProfile,
         setEditingProfile
     }

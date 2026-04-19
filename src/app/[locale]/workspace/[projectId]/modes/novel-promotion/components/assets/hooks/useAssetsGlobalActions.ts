@@ -125,7 +125,7 @@ export function useAssetsGlobalActions({
       })
       showToast(t('toolbar.globalAnalyzing'), 'warning', 60000)
 
-      const submission = await analyzeGlobalAssets.mutateAsync()
+      const submission = await analyzeGlobalAssets.mutateAsync(undefined)
       lastRunningTaskIdRef.current = submission.taskId
     } catch (error: unknown) {
       clearTaskTargetOverlay(queryClient, {

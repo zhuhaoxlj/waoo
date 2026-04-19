@@ -25,6 +25,8 @@ function readAssetKind(value: Record<string, unknown>): string {
 }
 
 export async function handleAnalyzeGlobalTask(job: Job<TaskJobData>) {
+  const payload = (job.data.payload || {}) as Record<string, unknown>
+  const onlyCharacters = payload.onlyCharacters === true
   const projectId = job.data.projectId
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -133,22 +135,31 @@ export async function handleAnalyzeGlobalTask(job: Job<TaskJobData>) {
 
       const [characterCompletion, locationCompletion, propCompletion] = await withInternalLLMStreamCallbacks(
         streamCallbacks,
-        async () =>
-          await Promise.all([
-            executeAiTextStep({
-              userId: job.data.userId,
-              model: analysisModel,
-              messages: [{ role: 'user', content: characterPrompt }],
-              temperature: 0.7,
-              projectId,
-              action: 'analyze_global_characters',
-              meta: {
-                stepId: `analyze_global_characters_${i + 1}`,
-                stepTitle: `角色分析 ${i + 1}/${chunks.length}`,
-                stepIndex: i + 1,
-                stepTotal: chunks.length,
-              },
-            }),
+        async () => {
+          const characterResult = await executeAiTextStep({
+            userId: job.data.userId,
+            model: analysisModel,
+            messages: [{ role: 'user', content: characterPrompt }],
+            temperature: 0.7,
+            projectId,
+            action: 'analyze_global_characters',
+            meta: {
+              stepId: `analyze_global_characters_${i + 1}`,
+              stepTitle: `角色分析 ${i + 1}/${chunks.length}`,
+              stepIndex: i + 1,
+              stepTotal: chunks.length,
+            },
+          })
+
+          if (onlyCharacters) {
+            return [
+              characterResult,
+              { text: '' },
+              { text: '' },
+            ]
+          }
+
+          const [locationResult, propResult] = await Promise.all([
             executeAiTextStep({
               userId: job.data.userId,
               model: analysisModel,
@@ -177,15 +188,18 @@ export async function handleAnalyzeGlobalTask(job: Job<TaskJobData>) {
                 stepTotal: chunks.length,
               },
             }),
-          ]),
+          ])
+
+          return [characterResult, locationResult, propResult]
+        },
       )
 
       const characterResponse = characterCompletion.text
       const locationResponse = locationCompletion.text
       const propResponse = propCompletion.text
       const charactersData = safeParseCharactersResponse(characterResponse)
-      const locationsData = safeParseLocationsResponse(locationResponse)
-      const propsData = safeParsePropsResponse(propResponse)
+      const locationsData = onlyCharacters ? {} : safeParseLocationsResponse(locationResponse)
+      const propsData = onlyCharacters ? {} : safeParsePropsResponse(propResponse)
 
       await persistAnalyzeGlobalChunk({
         projectInternalId: novelData.id,

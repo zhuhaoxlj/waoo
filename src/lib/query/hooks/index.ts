@@ -204,6 +204,9 @@ export {
     useStoryToScriptRunStream,
 } from './useStoryToScriptRunStream'
 export {
+    useAnalyzeGlobalRunStream,
+} from './useAnalyzeGlobalRunStream'
+export {
     useScriptToStoryboardRunStream,
 } from './useScriptToStoryboardRunStream'
 
