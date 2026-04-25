@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
+import { describe, expect, it } from 'vitest'
 import {
   ImageUrlsContractError,
   decodeImageUrlsFromDb,
@@ -7,28 +6,30 @@ import {
   encodeImageUrls,
 } from './image-urls-contract'
 
-test('encodeImageUrls returns JSON array string', () => {
-  const encoded = encodeImageUrls(['a', 'b'])
-  assert.equal(encoded, '["a","b"]')
-})
+describe('image-urls-contract', () => {
+  it('encodeImageUrls returns JSON array string', () => {
+    const encoded = encodeImageUrls(['a', 'b'])
+    expect(encoded).toBe('["a","b"]')
+  })
 
-test('decodeImageUrlsStrict parses valid JSON array', () => {
-  const decoded = decodeImageUrlsStrict('["a","b"]')
-  assert.deepEqual(decoded, ['a', 'b'])
-})
+  it('decodeImageUrlsStrict parses valid JSON array', () => {
+    const decoded = decodeImageUrlsStrict('["a","b"]')
+    expect(decoded).toEqual(['a', 'b'])
+  })
 
-test('decodeImageUrlsStrict throws on invalid JSON', () => {
-  assert.throws(() => decodeImageUrlsStrict('not-json'), ImageUrlsContractError)
-})
+  it('decodeImageUrlsStrict throws on invalid JSON', () => {
+    expect(() => decodeImageUrlsStrict('not-json')).toThrow(ImageUrlsContractError)
+  })
 
-test('decodeImageUrlsStrict throws on non-array JSON', () => {
-  assert.throws(() => decodeImageUrlsStrict('{"a":1}'), ImageUrlsContractError)
-})
+  it('decodeImageUrlsStrict throws on non-array JSON', () => {
+    expect(() => decodeImageUrlsStrict('{"a":1}')).toThrow(ImageUrlsContractError)
+  })
 
-test('decodeImageUrlsStrict throws on non-string array entry', () => {
-  assert.throws(() => decodeImageUrlsStrict('["a",1]'), ImageUrlsContractError)
-})
+  it('decodeImageUrlsStrict throws on non-string array entry', () => {
+    expect(() => decodeImageUrlsStrict('["a",1]')).toThrow(ImageUrlsContractError)
+  })
 
-test('decodeImageUrlsFromDb throws on null', () => {
-  assert.throws(() => decodeImageUrlsFromDb(null), ImageUrlsContractError)
+  it('decodeImageUrlsFromDb throws on null', () => {
+    expect(() => decodeImageUrlsFromDb(null)).toThrow(ImageUrlsContractError)
+  })
 })
