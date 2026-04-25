@@ -3,7 +3,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createBullBoard } from '@bull-board/api'
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter'
 import { ExpressAdapter } from '@bull-board/express'
-import { imageQueue, textQueue, videoQueue, voiceQueue } from '@/lib/task/queues'
+import { getQueueByType } from '@/lib/task/queues'
 
 const host = process.env.BULL_BOARD_HOST || '127.0.0.1'
 const port = Number.parseInt(process.env.BULL_BOARD_PORT || '3010', 10) || 3010
@@ -62,10 +62,10 @@ serverAdapter.setBasePath(basePath)
 
 createBullBoard({
   queues: [
-    new BullMQAdapter(imageQueue),
-    new BullMQAdapter(videoQueue),
-    new BullMQAdapter(voiceQueue),
-    new BullMQAdapter(textQueue),
+    new BullMQAdapter(getQueueByType('image')),
+    new BullMQAdapter(getQueueByType('video')),
+    new BullMQAdapter(getQueueByType('voice')),
+    new BullMQAdapter(getQueueByType('text')),
   ],
   serverAdapter,
 })
@@ -96,7 +96,12 @@ async function shutdown(signal: string) {
       signal,
     },
   })
-  await Promise.allSettled([imageQueue.close(), videoQueue.close(), voiceQueue.close(), textQueue.close()])
+  await Promise.allSettled([
+    getQueueByType('image').close(),
+    getQueueByType('video').close(),
+    getQueueByType('voice').close(),
+    getQueueByType('text').close(),
+  ])
   await new Promise<void>((resolve) => server.close(() => resolve()))
   process.exit(0)
 }
