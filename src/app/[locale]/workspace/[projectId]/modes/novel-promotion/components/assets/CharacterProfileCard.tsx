@@ -99,7 +99,7 @@ export default function CharacterProfileCard({
                                     onChange={onToggleSelected}
                                     className="h-4 w-4 rounded border-[var(--glass-stroke-strong)] text-[var(--glass-tone-info-fg)]"
                                 />
-                                {t('select')}
+                                {t('characterProfile.select')}
                             </label>
                         )}
                         <h3 className="text-base font-bold text-[var(--glass-text-primary)] mb-1.5">{name}</h3>
