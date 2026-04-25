@@ -13,7 +13,6 @@ import { useCallback } from 'react'
 import { isAbortError } from '@/lib/error-utils'
 import {
     useAssetActions,
-    useProjectAssets,
     useRefreshProjectAssets,
     useRegenerateSingleLocationImage,
     useRegenerateLocationGroup,
@@ -22,10 +21,12 @@ import {
     useConfirmProjectLocationSelection,
     useUpdateProjectLocationDescription,
 } from '@/lib/query/hooks'
+import type { Location, Prop } from '@/types/project'
 
 interface UseLocationActionsProps {
     projectId: string
     assetType?: 'location' | 'prop'
+    locations?: Array<Location | Prop>
     showToast?: (message: string, type: 'success' | 'warning' | 'error') => void
 }
 
@@ -41,12 +42,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
 export function useLocationActions({
     projectId,
     assetType = 'location',
+    locations = [],
     showToast
 }: UseLocationActionsProps) {
     const t = useTranslations('assets')
-    // 🔥 直接订阅缓存 - 消除 props drilling
-    const { data: assets } = useProjectAssets(projectId)
-    const locations = assetType === 'prop' ? assets?.props ?? [] : assets?.locations ?? []
     const propActions = useAssetActions({ scope: 'project', projectId, kind: 'prop' })
     const assetKey = assetType === 'prop' ? 'prop' : 'location'
 

@@ -23,7 +23,7 @@ import {
   useAssetActions,
   useGenerateProjectCharacterImage,
   useGenerateProjectLocationImage,
-  useAssets,
+  useProjectAssets,
   useRefreshProjectAssets,
   useEpisodes,
   useEpisodeData,
@@ -72,22 +72,10 @@ export default function AssetsStage({
   triggerGlobalAnalyze = false,
   onGlobalAnalyzeComplete
 }: AssetsStageProps) {
-  const { data: assets = [] } = useAssets({
-    scope: 'project',
-    projectId,
-  })
-  const characters = useMemo(
-    () => assets.filter((asset) => asset.kind === 'character'),
-    [assets],
-  )
-  const locations = useMemo(
-    () => assets.filter((asset) => asset.kind === 'location'),
-    [assets],
-  )
-  const props = useMemo(
-    () => assets.filter((asset) => asset.kind === 'prop'),
-    [assets],
-  )
+  const { data: projectAssets } = useProjectAssets(projectId)
+  const characters = useMemo(() => projectAssets?.characters ?? [], [projectAssets?.characters])
+  const locations = useMemo(() => projectAssets?.locations ?? [], [projectAssets?.locations])
+  const props = useMemo(() => projectAssets?.props ?? [], [projectAssets?.props])
   const propAssetActions = useAssetActions({
     scope: 'project',
     projectId,
@@ -120,7 +108,7 @@ export default function AssetsStage({
   const t = useTranslations('assets')
   const { showToast } = useToast()
   // 计算资产总数
-  const totalAppearances = characters.reduce((sum, character) => sum + character.variants.length, 0)
+  const totalAppearances = characters.reduce((sum, character) => sum + (character.appearances?.length || 0), 0)
   const totalLocations = locations.length
   const totalProps = props.length
   const totalAssets = totalAppearances + totalLocations + totalProps
@@ -187,7 +175,7 @@ export default function AssetsStage({
   )
 
   // 筛选后的计数
-  const filteredAppearances = filteredCharacters.reduce((sum, character) => sum + character.variants.length, 0)
+  const filteredAppearances = filteredCharacters.reduce((sum, character) => sum + (character.appearances?.length || 0), 0)
   const filteredLocCount = filteredLocations.length
   const filteredPropCount = filteredProps.length
   const filteredTotal = filteredAppearances + filteredLocCount + filteredPropCount
@@ -210,6 +198,8 @@ export default function AssetsStage({
     clearTransientTaskKey,
   } = useBatchGeneration({
     projectId,
+    characters,
+    locations,
     handleGenerateImage
   })
 
@@ -251,6 +241,7 @@ export default function AssetsStage({
     handleRegenerateCharacterGroup
   } = useCharacterActions({
     projectId,
+    characters,
     showToast
   })
 
@@ -263,6 +254,7 @@ export default function AssetsStage({
     handleRegenerateLocationGroup
   } = useLocationActions({
     projectId,
+    locations,
     showToast
   })
   const {
@@ -274,6 +266,7 @@ export default function AssetsStage({
   } = useLocationActions({
     projectId,
     assetType: 'prop',
+    locations: props,
     showToast,
   })
 
@@ -285,7 +278,8 @@ export default function AssetsStage({
     handleVoiceDesignSave,
     handleCloseVoiceDesign
   } = useTTSGeneration({
-    projectId
+    projectId,
+    characters,
   })
 
   // 弹窗状态
@@ -315,7 +309,10 @@ export default function AssetsStage({
     closeImageEditModal,
     closeCharacterImageEditModal
   } = useAssetModals({
-    projectId
+    projectId,
+    characters,
+    locations,
+    props,
   })
   // 档案管理
   const {
@@ -334,6 +331,7 @@ export default function AssetsStage({
     setEditingProfile
   } = useProfileManagement({
     projectId,
+    characters,
     showToast
   })
   const batchConfirmingState = batchConfirming
@@ -382,6 +380,9 @@ export default function AssetsStage({
       {/* 资产工具栏 */}
       <AssetToolbar
         projectId={projectId}
+        characters={characters}
+        locations={locations}
+        props={props}
         totalAssets={totalAssets}
         totalAppearances={totalAppearances}
         totalLocations={totalLocations}
@@ -411,6 +412,7 @@ export default function AssetsStage({
           <CharacterSection
             key="character"
             projectId={projectId}
+            characters={filteredCharacters}
             focusCharacterId={focusCharacterId}
             focusCharacterRequestId={focusCharacterRequestId}
             activeTaskKeys={activeTaskKeys}
@@ -434,7 +436,6 @@ export default function AssetsStage({
             onVoiceSelectFromHub={handleVoiceSelectFromHub}
             onCopyFromGlobal={handleCopyFromGlobal}
             getAppearances={getAppearances}
-            filterIds={episodeAssetIds?.charIds ?? null}
             // 🔥 V7：待确认角色档案内嵌到 CharacterSection
             unconfirmedCharacters={unconfirmedCharacters}
             isConfirmingCharacter={isConfirmingCharacter}
@@ -455,6 +456,7 @@ export default function AssetsStage({
           <LocationSection
             key="location"
             projectId={projectId}
+            locations={filteredLocations}
             activeTaskKeys={activeTaskKeys}
             onClearTaskKey={clearTransientTaskKey}
             onRegisterTransientTaskKey={registerTransientTaskKey}
@@ -470,13 +472,13 @@ export default function AssetsStage({
             onImageClick={setPreviewImage}
             onImageEdit={(locId, imgIdx) => handleOpenLocationImageEdit(locId, imgIdx, 'location')}
             onCopyFromGlobal={handleCopyLocationFromGlobal}
-            filterIds={episodeAssetIds?.locIds ?? null}
           />
       )}
       {(kindFilter === 'all' || kindFilter === 'prop') && (
           <LocationSection
             key="prop"
             projectId={projectId}
+            locations={filteredProps}
             assetType="prop"
             activeTaskKeys={activeTaskKeys}
             onClearTaskKey={clearTransientTaskKey}
@@ -495,7 +497,6 @@ export default function AssetsStage({
             onImageClick={setPreviewImage}
             onImageEdit={(propId, imgIdx) => handleOpenLocationImageEdit(propId, imgIdx, 'prop')}
             onCopyFromGlobal={handleCopyPropFromGlobal}
-            filterIds={episodeAssetIds?.propIds ?? null}
           />
       )}
 

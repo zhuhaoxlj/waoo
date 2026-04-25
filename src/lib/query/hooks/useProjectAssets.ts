@@ -1,6 +1,7 @@
 'use client'
 import { logInfo as _ulogInfo } from '@/lib/logging/core'
 
+import { useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../keys'
 import type { Character, Location, MediaRef, Prop } from '@/types/project'
@@ -115,8 +116,10 @@ export function useProjectAssets(projectId: string | null) {
         scope: 'project',
         projectId,
     })
-    const groups = groupAssetsByKind(assetsQuery.data)
-    const data = mapAssetGroupsToProjectAssetsData(groups)
+    const data = useMemo(() => {
+        const groups = groupAssetsByKind(assetsQuery.data)
+        return mapAssetGroupsToProjectAssetsData(groups)
+    }, [assetsQuery.data])
 
     return {
         ...assetsQuery,

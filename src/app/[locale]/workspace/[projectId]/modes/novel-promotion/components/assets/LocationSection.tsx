@@ -10,14 +10,13 @@ import { useTranslations } from 'next-intl'
  */
 
 import { Location, Prop } from '@/types/project'
-import { useProjectAssets } from '@/lib/query/hooks/useProjectAssets'
 import LocationCard from './LocationCard'
 import { AppIcon } from '@/components/ui/icons'
 import { resolveLocationBackedGenerateType } from './location-backed-asset'
 
 interface LocationSectionProps {
-    // 🔥 V6.5 删除：locations prop - 现在内部直接订阅
     projectId: string
+    locations: Array<Location | Prop>
     assetType?: 'location' | 'prop'
     activeTaskKeys: Set<string>
     onClearTaskKey: (key: string) => void
@@ -36,13 +35,11 @@ interface LocationSectionProps {
     onImageClick: (imageUrl: string) => void
     onImageEdit: (locationId: string, imageIndex: number, locationName: string) => void
     onCopyFromGlobal: (locationId: string) => void  // 🆕 从资产中心复制
-    /** 分集筛选：仅显示指定 ID 的场景/道具，null 表示显示全部 */
-    filterIds?: Set<string> | null
 }
 
 export default function LocationSection({
-    // 🔥 V6.5 删除：locations prop - 现在内部直接订阅
     projectId,
+    locations: allLocations,
     assetType = 'location',
     activeTaskKeys,
     onClearTaskKey,
@@ -59,15 +56,10 @@ export default function LocationSection({
     onImageClick,
     onImageEdit,
     onCopyFromGlobal,
-    filterIds = null,
 }: LocationSectionProps) {
     const t = useTranslations('assets')
 
-    const { data: assets } = useProjectAssets(projectId)
-    const allLocations: Array<Location | Prop> = assetType === 'prop'
-        ? assets?.props ?? []
-        : assets?.locations ?? []
-    const locations = filterIds ? allLocations.filter((l) => filterIds.has(l.id)) : allLocations
+    const locations = allLocations
     const assetKey = assetType === 'prop' ? 'prop' : 'location'
     const generateType = resolveLocationBackedGenerateType(assetType)
 

@@ -8,11 +8,6 @@ import type { AbstractIntlMessages } from 'next-intl'
 import LocationSection from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/assets/LocationSection'
 
 const locationCardMock = vi.hoisted(() => vi.fn((_props: unknown) => null))
-const useProjectAssetsMock = vi.hoisted(() => vi.fn())
-
-vi.mock('@/lib/query/hooks/useProjectAssets', () => ({
-  useProjectAssets: (projectId: string | null) => useProjectAssetsMock(projectId),
-}))
 
 vi.mock('@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/assets/LocationCard', () => ({
   default: (props: unknown) => locationCardMock(props),
@@ -56,38 +51,47 @@ describe('LocationSection prop confirm wiring', () => {
   it('passes the confirm-selection callback through to prop cards', () => {
     Reflect.set(globalThis, 'React', React)
     locationCardMock.mockClear()
-    useProjectAssetsMock.mockReturnValue({
-      data: {
-        characters: [],
-        locations: [],
-        props: [{
-          id: 'prop-1',
-          name: '青铜匕首',
-          summary: '古旧短刃',
-          selectedImageId: 'prop-image-2',
-          images: [
-            {
-              id: 'prop-image-1',
-              imageIndex: 0,
-              description: '候选 1',
-              imageUrl: 'https://example.com/prop-1.png',
-              isSelected: false,
-            },
-            {
-              id: 'prop-image-2',
-              imageIndex: 1,
-              description: '候选 2',
-              imageUrl: 'https://example.com/prop-2.png',
-              isSelected: true,
-            },
-          ],
-        }],
-      },
-    })
+    const props = [{
+      id: 'prop-1',
+      name: '青铜匕首',
+      summary: '古旧短刃',
+      selectedImageId: 'prop-image-2',
+      images: [
+        {
+          id: 'prop-image-1',
+          imageIndex: 0,
+          description: '候选 1',
+          imageUrl: 'https://example.com/prop-1.png',
+          media: null,
+          previousImageUrl: null,
+          previousMedia: null,
+          previousDescription: null,
+          isSelected: false,
+          imageTaskRunning: false,
+          imageErrorMessage: null,
+          lastError: null,
+        },
+        {
+          id: 'prop-image-2',
+          imageIndex: 1,
+          description: '候选 2',
+          imageUrl: 'https://example.com/prop-2.png',
+          media: null,
+          previousImageUrl: null,
+          previousMedia: null,
+          previousDescription: null,
+          isSelected: true,
+          imageTaskRunning: false,
+          imageErrorMessage: null,
+          lastError: null,
+        },
+      ],
+    }]
 
     renderWithIntl(
       createElement(LocationSection, {
         projectId: 'project-1',
+        locations: props,
         assetType: 'prop',
         activeTaskKeys: new Set<string>(),
         onClearTaskKey: () => undefined,
@@ -104,7 +108,6 @@ describe('LocationSection prop confirm wiring', () => {
         onImageClick: () => undefined,
         onImageEdit: () => undefined,
         onCopyFromGlobal: () => undefined,
-        filterIds: null,
       }),
     )
 

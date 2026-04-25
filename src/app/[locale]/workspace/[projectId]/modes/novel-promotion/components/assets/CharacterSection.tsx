@@ -16,15 +16,14 @@ import { PRIMARY_APPEARANCE_INDEX } from '@/lib/constants'
  */
 
 import { Character, CharacterAppearance } from '@/types/project'
-import { useProjectAssets } from '@/lib/query/hooks/useProjectAssets'
 import CharacterCard from './CharacterCard'
 import CharacterProfileCard from './CharacterProfileCard'
 import { parseProfileData } from '@/types/character-profile'
 import { AppIcon } from '@/components/ui/icons'
 
 interface CharacterSectionProps {
-    // 🔥 V6.5 删除：characters prop - 现在内部直接订阅
     projectId: string
+    characters: Character[]
     focusCharacterId?: string | null
     focusCharacterRequestId?: number
     activeTaskKeys: Set<string>
@@ -51,8 +50,6 @@ interface CharacterSectionProps {
     onCopyFromGlobal: (characterId: string) => void  // 🆕 从资产中心复制
     // 辅助函数
     getAppearances: (character: Character) => CharacterAppearance[]
-    /** 分集筛选：仅显示指定 ID 的角色，null 表示显示全部 */
-    filterIds?: Set<string> | null
     // 🔥 V7：待确认角色档案（内嵌到 CharacterSection）
     unconfirmedCharacters: Character[]
     isConfirmingCharacter: (characterId: string) => boolean
@@ -70,8 +67,8 @@ interface CharacterSectionProps {
 }
 
 export default function CharacterSection({
-    // 🔥 V6.5 删除：characters prop - 现在内部直接订阅
     projectId,
+    characters: allCharacters,
     focusCharacterId = null,
     focusCharacterRequestId = 0,
     activeTaskKeys,
@@ -95,7 +92,6 @@ export default function CharacterSection({
     onVoiceSelectFromHub,
     onCopyFromGlobal,
     getAppearances,
-    filterIds = null,
     // 🔥 V7：待确认角色
     unconfirmedCharacters,
     isConfirmingCharacter,
@@ -121,8 +117,6 @@ export default function CharacterSection({
         })
         : null
 
-    const { data: assets } = useProjectAssets(projectId)
-    const allCharacters: Character[] = useMemo(() => assets?.characters ?? [], [assets?.characters])
     // 🔥 V7：排除待确认角色，避免同一角色在待确认区与已确认网格中重复出现
     const unconfirmedIds = useMemo(
         () => new Set(unconfirmedCharacters.map((c) => c.id)),
@@ -130,10 +124,9 @@ export default function CharacterSection({
     )
     const characters: Character[] = useMemo(
         () => {
-            const base = filterIds ? allCharacters.filter((c) => filterIds.has(c.id)) : allCharacters
-            return base.filter((c) => !unconfirmedIds.has(c.id))
+            return allCharacters.filter((c) => !unconfirmedIds.has(c.id))
         },
-        [allCharacters, filterIds, unconfirmedIds],
+        [allCharacters, unconfirmedIds],
     )
     const [highlightedCharacterId, setHighlightedCharacterId] = useState<string | null>(null)
     const [selectedUnconfirmedIds, setSelectedUnconfirmedIds] = useState<Set<string>>(new Set())

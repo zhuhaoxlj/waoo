@@ -11,11 +11,11 @@ import { useTranslations } from 'next-intl'
 
 import { useState } from 'react'
 import {
-    useProjectAssets,
     useRefreshProjectAssets,
     useUpdateProjectCharacterVoiceSettings,
     useSaveProjectDesignedVoice,
 } from '@/lib/query/hooks'
+import type { Character } from '@/types/project'
 
 interface VoiceDesignCharacter {
     id: string
@@ -25,6 +25,7 @@ interface VoiceDesignCharacter {
 
 interface UseTTSGenerationProps {
     projectId: string
+    characters?: Character[]
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -37,12 +38,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function useTTSGeneration({
-    projectId
+    projectId,
+    characters = [],
 }: UseTTSGenerationProps) {
     const t = useTranslations('assets')
-    // 🔥 直接订阅缓存 - 消除 props drilling
-    const { data: assets } = useProjectAssets(projectId)
-    const characters = assets?.characters ?? []
 
     // 🔥 使用刷新函数
     const refreshAssets = useRefreshProjectAssets(projectId)

@@ -7,12 +7,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import type { AbstractIntlMessages } from 'next-intl'
 import CharacterSection from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/assets/CharacterSection'
 
-const useProjectAssetsMock = vi.hoisted(() => vi.fn())
 const characterCardMock = vi.hoisted(() => vi.fn((_props: unknown) => null))
-
-vi.mock('@/lib/query/hooks/useProjectAssets', () => ({
-  useProjectAssets: (projectId: string | null) => useProjectAssetsMock(projectId),
-}))
 
 vi.mock('@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/assets/CharacterCard', () => ({
   __esModule: true,
@@ -81,31 +76,48 @@ function renderWithIntl(node: ReactElement) {
 describe('CharacterSection actions', () => {
   it('renders import and delete actions stacked vertically with the import icon', () => {
     Reflect.set(globalThis, 'React', React)
-    useProjectAssetsMock.mockReturnValue({
-      data: {
-        characters: [
+    const characters = [
+      {
+        id: 'character-1',
+        name: '西装男',
+        introduction: null,
+        appearances: [
           {
-            id: 'character-1',
-            name: '西装男',
-            introduction: null,
-            appearances: [
-              {
-                id: 'appearance-1',
-                appearanceIndex: 0,
-                changeReason: '初始形象',
-                imageUrl: null,
-                imageUrls: [],
-                selectedIndex: null,
-              },
-            ],
+            id: 'appearance-1',
+            appearanceIndex: 0,
+            changeReason: '初始形象',
+            description: '测试描述',
+            descriptions: null,
+            imageUrl: null,
+            media: null,
+            imageUrls: [],
+            imageMedias: [],
+            previousImageUrl: null,
+            previousMedia: null,
+            previousImageUrls: [],
+            previousImageMedias: [],
+            previousDescription: null,
+            previousDescriptions: null,
+            selectedIndex: null,
+            imageTaskRunning: false,
+            imageErrorMessage: null,
+            lastError: null,
           },
         ],
+        voiceType: null,
+        voiceId: null,
+        customVoiceUrl: null,
+        media: null,
+        profileData: null,
+        profileConfirmed: undefined,
+        profileConfirmTaskRunning: false,
       },
-    })
+    ]
 
     const html = renderWithIntl(
       createElement(CharacterSection, {
         projectId: 'project-1',
+        characters,
         activeTaskKeys: new Set<string>(),
         onClearTaskKey: () => undefined,
         onRegisterTransientTaskKey: () => undefined,

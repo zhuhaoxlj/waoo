@@ -9,7 +9,7 @@
 
 import { useState, useCallback } from 'react'
 import { CharacterAppearance } from '@/types/project'
-import { useProjectAssets, type Character, type Location, type Prop } from '@/lib/query/hooks'
+import type { Character, Location, Prop } from '@/lib/query/hooks'
 
 // 编辑弹窗状态类型
 interface EditingAppearance {
@@ -51,17 +51,17 @@ interface CharacterImageEditModal {
 
 interface UseAssetModalsProps {
     projectId: string
+    characters?: Character[]
+    locations?: Location[]
+    props?: Prop[]
 }
 
 export function useAssetModals({
-    projectId
+    projectId: _projectId,
+    characters = [],
+    locations = [],
+    props = [],
 }: UseAssetModalsProps) {
-    // 🔥 直接订阅缓存 - 消除 props drilling
-    const { data: assets } = useProjectAssets(projectId)
-    const characters = assets?.characters ?? []
-    const locations = assets?.locations ?? []
-    const props = assets?.props ?? []
-
     // 获取形象列表（内置实现）
     const getAppearances = useCallback((character: Character): CharacterAppearance[] => {
         return character.appearances || []

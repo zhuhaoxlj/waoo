@@ -11,9 +11,9 @@ import { logError as _ulogError } from '@/lib/logging/core'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { CharacterAppearance } from '@/types/project'
+import { CharacterAppearance, Location } from '@/types/project'
 import { useImageGenerationCount } from '@/lib/image-generation/use-image-generation-count'
-import { useProjectAssets, useRefreshProjectAssets, useGenerateProjectCharacterImage, useGenerateProjectLocationImage, type Character } from '@/lib/query/hooks'
+import { useRefreshProjectAssets, useGenerateProjectCharacterImage, useGenerateProjectLocationImage, type Character } from '@/lib/query/hooks'
 import {
     createManualKeyBaseline,
     isAppearanceTaskRunning,
@@ -23,19 +23,19 @@ import {
 
 interface UseBatchGenerationProps {
     projectId: string
+    characters?: Character[]
+    locations?: Location[]
     // 🔥 V6.6：移除 onGenerateImage，内部使用 mutation hooks
     handleGenerateImage?: (type: 'character' | 'location', id: string, appearanceId?: string, count?: number) => Promise<void> | void
 }
 
 export function useBatchGeneration({
     projectId,
+    characters = [],
+    locations = [],
     handleGenerateImage: externalHandleGenerateImage
 }: UseBatchGenerationProps) {
     const t = useTranslations('assets')
-    // 🔥 直接订阅缓存 - 消除 props drilling
-    const { data: assets } = useProjectAssets(projectId)
-    const characters = useMemo(() => assets?.characters ?? [], [assets?.characters])
-    const locations = useMemo(() => assets?.locations ?? [], [assets?.locations])
     const { count: characterGenerationCount } = useImageGenerationCount('character')
     const { count: locationGenerationCount } = useImageGenerationCount('location')
 

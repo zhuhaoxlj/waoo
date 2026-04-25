@@ -13,7 +13,6 @@ import { useCallback } from 'react'
 import { CharacterAppearance } from '@/types/project'
 import { isAbortError } from '@/lib/error-utils'
 import {
-    useProjectAssets,
     useRefreshProjectAssets,
     useRegenerateSingleCharacterImage,
     useRegenerateCharacterGroup,
@@ -27,6 +26,7 @@ import {
 
 interface UseCharacterActionsProps {
     projectId: string
+    characters?: Character[]
     showToast?: (message: string, type: 'success' | 'warning' | 'error') => void
 }
 
@@ -41,12 +41,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 export function useCharacterActions({
     projectId,
+    characters = [],
     showToast
 }: UseCharacterActionsProps) {
     const t = useTranslations('assets')
-    // 🔥 直接订阅缓存 - 消除 props drilling
-    const { data: assets } = useProjectAssets(projectId)
-    const characters = assets?.characters ?? []
 
     // 🔥 使用刷新函数 - mutations 完成后刷新缓存
     const refreshAssets = useRefreshProjectAssets(projectId)

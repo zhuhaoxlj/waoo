@@ -8,7 +8,6 @@ import type { AbstractIntlMessages } from 'next-intl'
 import AssetToolbar from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/assets/AssetToolbar'
 
 vi.mock('@/lib/query/hooks', () => ({
-  useProjectAssets: vi.fn(() => ({ data: { characters: [], locations: [], props: [] } })),
   useProjectData: vi.fn(() => ({ data: { name: '项目A' } })),
 }))
 
@@ -57,6 +56,9 @@ describe('AssetToolbar', () => {
     const html = renderWithIntl(
       createElement(AssetToolbar, {
         projectId: 'project-1',
+        characters: [],
+        locations: [],
+        props: [],
         totalAssets: 24,
         totalAppearances: 11,
         totalLocations: 13,
