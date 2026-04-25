@@ -15,10 +15,12 @@ type UseSSEOptions = {
   onEvent?: (event: SSEEvent) => void
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BufferedEvent = { payload: any; raw: SSEEvent }
+
 export function useSSE({ projectId, episodeId, enabled = true, onEvent }: UseSSEOptions) {
   const queryClient = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
-  const targetStatesInvalidateTimerRef = useRef<number | null>(null)
   const isGlobalAssetProject = projectId === 'global-asset-hub'
 
   const url = useMemo(() => {
@@ -31,71 +33,41 @@ export function useSSE({ projectId, episodeId, enabled = true, onEvent }: UseSSE
   useEffect(() => {
     if (!enabled || !url || !projectId) return
 
+    // Capture narrowed value for use in nested functions
+    const pid = projectId
+
     const source = new EventSource(url)
     sourceRef.current = source
 
-    const invalidateEpisodeScoped = (resolvedEpisodeId: string | null) => {
-      if (!resolvedEpisodeId) return
-      queryClient.invalidateQueries({ queryKey: queryKeys.episodeData(projectId, resolvedEpisodeId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.storyboards.all(resolvedEpisodeId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.voiceLines.all(resolvedEpisodeId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.voiceLines.matched(projectId, resolvedEpisodeId) })
+    // ── Batch buffer for SSE events ──
+    const buffer: BufferedEvent[] = []
+    let flushTimer: number | null = null
+
+    function scheduleFlush() {
+      if (flushTimer !== null) return
+      flushTimer = window.setTimeout(() => {
+        flushTimer = null
+        flush()
+      }, 0)
     }
 
-    const invalidateByTarget = (targetType: string | null, resolvedEpisodeId: string | null) => {
-      if (isGlobalAssetProject) {
-        if (targetType?.startsWith('GlobalCharacter')) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.globalAssets.characters() })
-          return
-        }
-        if (targetType?.startsWith('GlobalLocation')) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.globalAssets.locations() })
-          return
-        }
-        if (targetType?.startsWith('GlobalVoice')) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.globalAssets.voices() })
-          return
-        }
-        queryClient.invalidateQueries({ queryKey: queryKeys.globalAssets.all() })
-        return
+    function flush() {
+      if (buffer.length === 0) return
+
+      // Snapshot and clear
+      const batch = buffer.splice(0)
+
+      // ── 1. Fire onEvent for every event ──
+      for (const { raw } of batch) {
+        onEvent?.(raw)
       }
 
-      if (targetType === 'CharacterAppearance' || targetType === 'NovelPromotionCharacter') {
-        queryClient.invalidateQueries({ queryKey: queryKeys.projectAssets.characters(projectId) })
-        queryClient.invalidateQueries({ queryKey: queryKeys.projectAssets.all(projectId) })
-        return
-      }
-      if (targetType === 'LocationImage' || targetType === 'NovelPromotionLocation') {
-        queryClient.invalidateQueries({ queryKey: queryKeys.projectAssets.locations(projectId) })
-        queryClient.invalidateQueries({ queryKey: queryKeys.projectAssets.all(projectId) })
-        return
-      }
-      if (targetType === 'NovelPromotionVoiceLine') {
-        invalidateEpisodeScoped(resolvedEpisodeId)
-        return
-      }
-      if (
-        targetType === 'NovelPromotionPanel' ||
-        targetType === 'NovelPromotionStoryboard' ||
-        targetType === 'NovelPromotionShot'
-      ) {
-        invalidateEpisodeScoped(resolvedEpisodeId)
-        return
-      }
-      if (targetType === 'NovelPromotionEpisode') {
-        invalidateEpisodeScoped(resolvedEpisodeId)
-        queryClient.invalidateQueries({ queryKey: queryKeys.projectData(projectId) })
-        return
-      }
+      // ── 2. Collect unique invalidation targets ──
+      const tasksListInvalidated = new Set<string>()
+      const targetStateScheduled = new Set<string>()
+      const invalidatedTargets = new Set<string>()
 
-      queryClient.invalidateQueries({ queryKey: queryKeys.projectData(projectId) })
-    }
-
-    const handleEvent = (event: MessageEvent) => {
-      try {
-        const payload = JSON.parse(event.data || '{}')
-        if (!payload || !payload.type) return
-        onEvent?.(payload as SSEEvent)
+      for (const { payload } of batch) {
         const eventType = payload.type as string
         const targetType = typeof payload.targetType === 'string'
           ? payload.targetType
@@ -114,42 +86,23 @@ export function useSSE({ projectId, episodeId, enabled = true, onEvent }: UseSSE
             : null
         const resolvedEpisodeId = eventEpisodeId || episodeId || null
 
-        const eventPayload = payload?.payload && typeof payload.payload === 'object'
-          ? (payload.payload as Record<string, unknown>)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const eventPayload: any = payload?.payload && typeof payload.payload === 'object'
+          ? payload.payload
           : null
+        const lifecycleTypeValue = eventPayload?.lifecycleType
         const rawLifecycleType =
           eventType === TASK_SSE_EVENT_TYPE.LIFECYCLE
-            ? typeof eventPayload?.lifecycleType === 'string'
-              ? eventPayload.lifecycleType
+            ? typeof lifecycleTypeValue === 'string'
+              ? lifecycleTypeValue
               : null
             : null
         const normalizedLifecycleType =
           rawLifecycleType === TASK_EVENT_TYPE.PROGRESS
             ? TASK_EVENT_TYPE.PROCESSING
             : rawLifecycleType
-        const isLifecycleEvent = eventType === TASK_SSE_EVENT_TYPE.LIFECYCLE
-        const shouldInvalidateTasksList =
-          normalizedLifecycleType === TASK_EVENT_TYPE.CREATED ||
-          normalizedLifecycleType === TASK_EVENT_TYPE.COMPLETED ||
-          normalizedLifecycleType === TASK_EVENT_TYPE.FAILED ||
-          (normalizedLifecycleType === TASK_EVENT_TYPE.PROCESSING &&
-            typeof eventPayload?.progress !== 'number')
-        const shouldInvalidateTargetStates =
-          normalizedLifecycleType === TASK_EVENT_TYPE.COMPLETED ||
-          normalizedLifecycleType === TASK_EVENT_TYPE.FAILED
 
-        if (isLifecycleEvent && shouldInvalidateTasksList) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all(projectId) })
-        }
-        if (isLifecycleEvent && shouldInvalidateTargetStates) {
-          if (targetStatesInvalidateTimerRef.current === null) {
-            targetStatesInvalidateTimerRef.current = window.setTimeout(() => {
-              queryClient.invalidateQueries({ queryKey: queryKeys.tasks.targetStatesAll(projectId), exact: false })
-              targetStatesInvalidateTimerRef.current = null
-            }, 800)
-          }
-        }
-
+        // ── applyTaskLifecycleToOverlay: per-event, lightweight ──
         const payloadIntent = isTaskIntent(eventPayload?.intent)
           ? eventPayload.intent
           : resolveTaskIntent(typeof payload.taskType === 'string' ? payload.taskType : null)
@@ -163,7 +116,7 @@ export function useSSE({ projectId, episodeId, enabled = true, onEvent }: UseSSE
             : null
 
         applyTaskLifecycleToOverlay(queryClient, {
-          projectId,
+          projectId: pid,
           lifecycleType: normalizedLifecycleType,
           targetType,
           targetId,
@@ -177,19 +130,123 @@ export function useSSE({ projectId, episodeId, enabled = true, onEvent }: UseSSE
           eventTs: typeof payload.ts === 'string' ? payload.ts : null,
         })
 
-        if (
+        // ── Deduplicated invalidation scheduling ──
+        const isLifecycleEvent = eventType === TASK_SSE_EVENT_TYPE.LIFECYCLE
+        const shouldInvalidateTasksList =
           normalizedLifecycleType === TASK_EVENT_TYPE.CREATED ||
-          normalizedLifecycleType === TASK_EVENT_TYPE.PROCESSING
-        ) {
-          return
+          normalizedLifecycleType === TASK_EVENT_TYPE.COMPLETED ||
+          normalizedLifecycleType === TASK_EVENT_TYPE.FAILED ||
+          (normalizedLifecycleType === TASK_EVENT_TYPE.PROCESSING &&
+            typeof eventPayload?.progress !== 'number')
+        const shouldInvalidateTargetStates =
+          normalizedLifecycleType === TASK_EVENT_TYPE.COMPLETED ||
+          normalizedLifecycleType === TASK_EVENT_TYPE.FAILED
+
+        if (isLifecycleEvent && shouldInvalidateTasksList) {
+          tasksListInvalidated.add(pid)
+        }
+        if (isLifecycleEvent && shouldInvalidateTargetStates) {
+          targetStateScheduled.add(pid)
         }
 
+        // Completed/Failed → invalidate by target (deduplicated)
         if (
           normalizedLifecycleType === TASK_EVENT_TYPE.COMPLETED ||
           normalizedLifecycleType === TASK_EVENT_TYPE.FAILED
         ) {
-          invalidateByTarget(targetType, resolvedEpisodeId)
+          const targetKey = `${targetType}:${resolvedEpisodeId}`
+          if (!invalidatedTargets.has(targetKey)) {
+            invalidatedTargets.add(targetKey)
+            invalidateByTarget(targetType, resolvedEpisodeId)
+          }
         }
+      }
+
+      // ── Batch-level: tasks list (once per flush) ──
+      if (tasksListInvalidated.has(pid)) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all(pid) })
+      }
+
+      // ── Batch-level: target states (debounced 800ms) ──
+      if (targetStateScheduled.has(pid)) {
+        targetStatesDebounce()
+      }
+    }
+
+    // ── Debounce helper for target states ──
+    let targetStatesTimer: number | null = null
+    function targetStatesDebounce() {
+      if (targetStatesTimer !== null) return
+      targetStatesTimer = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.targetStatesAll(pid), exact: false })
+        targetStatesTimer = null
+      }, 800)
+    }
+
+    function invalidateEpisodeScoped(resolvedEpisodeId: string | null) {
+      if (!resolvedEpisodeId) return
+      queryClient.invalidateQueries({ queryKey: queryKeys.episodeData(pid, resolvedEpisodeId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.storyboards.all(resolvedEpisodeId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.voiceLines.all(resolvedEpisodeId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.voiceLines.matched(pid, resolvedEpisodeId) })
+    }
+
+    function invalidateByTarget(targetType: string | null, resolvedEpisodeId: string | null) {
+      if (isGlobalAssetProject) {
+        if (targetType?.startsWith('GlobalCharacter')) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.globalAssets.characters() })
+          return
+        }
+        if (targetType?.startsWith('GlobalLocation')) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.globalAssets.locations() })
+          return
+        }
+        if (targetType?.startsWith('GlobalVoice')) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.globalAssets.voices() })
+          return
+        }
+        queryClient.invalidateQueries({ queryKey: queryKeys.globalAssets.all() })
+        return
+      }
+
+      if (targetType === 'CharacterAppearance' || targetType === 'NovelPromotionCharacter') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectAssets.characters(pid) })
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectAssets.all(pid) })
+        return
+      }
+      if (targetType === 'LocationImage' || targetType === 'NovelPromotionLocation') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectAssets.locations(pid) })
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectAssets.all(pid) })
+        return
+      }
+      if (targetType === 'NovelPromotionVoiceLine') {
+        invalidateEpisodeScoped(resolvedEpisodeId)
+        return
+      }
+      if (
+        targetType === 'NovelPromotionPanel' ||
+        targetType === 'NovelPromotionStoryboard' ||
+        targetType === 'NovelPromotionShot'
+      ) {
+        invalidateEpisodeScoped(resolvedEpisodeId)
+        return
+      }
+      if (targetType === 'NovelPromotionEpisode') {
+        invalidateEpisodeScoped(resolvedEpisodeId)
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectData(pid) })
+        return
+      }
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.projectData(pid) })
+    }
+
+    // ── Incoming event handler: buffer only ──
+    const handleEvent = (event: MessageEvent) => {
+      try {
+        const payload = JSON.parse(event.data || '{}')
+        if (!payload || !payload.type) return
+        buffer.push({ payload, raw: payload as SSEEvent })
+        scheduleFlush()
       } catch (error) {
         _ulogError('[useSSE] failed to parse event', error)
       }
@@ -211,9 +268,13 @@ export function useSSE({ projectId, episodeId, enabled = true, onEvent }: UseSSE
     }
 
     return () => {
-      if (targetStatesInvalidateTimerRef.current !== null) {
-        window.clearTimeout(targetStatesInvalidateTimerRef.current)
-        targetStatesInvalidateTimerRef.current = null
+      if (flushTimer !== null) {
+        window.clearTimeout(flushTimer)
+        flushTimer = null
+      }
+      if (targetStatesTimer !== null) {
+        window.clearTimeout(targetStatesTimer)
+        targetStatesTimer = null
       }
       for (const listener of listeners) {
         source.removeEventListener(listener.type, listener.handler)
