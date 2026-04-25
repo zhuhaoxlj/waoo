@@ -105,6 +105,17 @@ function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function normalizeStringArray(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null
+  return value.map((item) => normalizeString(item))
+}
+
+function normalizeNullableStringField(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined
+  if (value === null) return null
+  return normalizeString(value) || null
+}
+
 function toObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   return value as Record<string, unknown>
@@ -1055,7 +1066,14 @@ async function updateGlobalAssetVariant(input: AssetVariantUpdateInput) {
     })
     if (!appearance) throw new ApiError('NOT_FOUND')
     const updateData: Record<string, unknown> = {}
-    if (input.body.description !== undefined) {
+    const normalizedDescriptions = normalizeStringArray(input.body.descriptions)
+    if (normalizedDescriptions) {
+      if (normalizedDescriptions.length === 0 || !normalizedDescriptions.some((item) => item)) {
+        throw new ApiError('INVALID_PARAMS')
+      }
+      updateData.descriptions = JSON.stringify(normalizedDescriptions)
+      updateData.description = normalizedDescriptions[0] || normalizedDescriptions.find((item) => item) || ''
+    } else if (input.body.description !== undefined) {
       const trimmedDescription = normalizeString(input.body.description)
       let descriptions: string[] = []
       if (appearance.descriptions) {
@@ -1101,22 +1119,37 @@ async function updateProjectAssetVariant(input: AssetVariantUpdateInput) {
       where: { id: input.variantId },
     })
     if (!appearance) throw new ApiError('NOT_FOUND')
-    const trimmedDescription = normalizeString(input.body.description)
-    if (!trimmedDescription) throw new ApiError('INVALID_PARAMS')
-    let descriptions: string[] = []
-    try {
-      descriptions = appearance.descriptions ? JSON.parse(appearance.descriptions) as string[] : []
-    } catch {
-      descriptions = []
+    const normalizedDescriptions = normalizeStringArray(input.body.descriptions)
+    let nextDescriptions: string[] = []
+
+    if (normalizedDescriptions) {
+      if (normalizedDescriptions.length === 0 || !normalizedDescriptions.some((item) => item)) {
+        throw new ApiError('INVALID_PARAMS')
+      }
+      nextDescriptions = normalizedDescriptions
+    } else {
+      const trimmedDescription = normalizeString(input.body.description)
+      if (!trimmedDescription) throw new ApiError('INVALID_PARAMS')
+      try {
+        nextDescriptions = appearance.descriptions ? JSON.parse(appearance.descriptions) as string[] : []
+      } catch {
+        nextDescriptions = []
+      }
+      const descriptionIndex = toNumber(input.body.descriptionIndex) ?? 0
+      if (descriptionIndex >= 0 && descriptionIndex < nextDescriptions.length) nextDescriptions[descriptionIndex] = trimmedDescription
+      else nextDescriptions.push(trimmedDescription)
     }
-    const descriptionIndex = toNumber(input.body.descriptionIndex) ?? 0
-    if (descriptionIndex >= 0 && descriptionIndex < descriptions.length) descriptions[descriptionIndex] = trimmedDescription
-    else descriptions.push(trimmedDescription)
+
+    const primaryDescription = nextDescriptions[0] || nextDescriptions.find((item) => item) || ''
+    const promptSuffixOverride = normalizeNullableStringField(input.body.promptSuffixOverride)
+    const artStylePromptOverride = normalizeNullableStringField(input.body.artStylePromptOverride)
     await prisma.characterAppearance.update({
       where: { id: input.variantId },
       data: {
-        description: trimmedDescription,
-        descriptions: JSON.stringify(descriptions),
+        description: primaryDescription,
+        descriptions: JSON.stringify(nextDescriptions),
+        ...(promptSuffixOverride !== undefined ? { promptSuffixOverride } : {}),
+        ...(artStylePromptOverride !== undefined ? { artStylePromptOverride } : {}),
       },
     })
     return { success: true }

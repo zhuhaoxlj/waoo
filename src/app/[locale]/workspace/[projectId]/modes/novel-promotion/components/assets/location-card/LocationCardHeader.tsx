@@ -50,10 +50,10 @@ export default function LocationCardHeader(props: LocationCardHeaderProps) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-1">
-        <div className="text-xs font-semibold text-[var(--glass-text-primary)] truncate" title={props.locationName}>
+        <div className="min-w-0 flex-1 text-xs font-semibold text-[var(--glass-text-primary)] truncate" title={props.locationName}>
           {props.locationName}
         </div>
-        <div className="flex items-center gap-1">{props.actions}</div>
+        <div className="relative z-10 flex items-center gap-1 pointer-events-auto">{props.actions}</div>
       </div>
       {props.summary && (
         <div className="text-xs text-[var(--glass-text-tertiary)] truncate" title={props.summary}>

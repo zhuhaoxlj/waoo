@@ -17,6 +17,8 @@ type CharacterAppearanceRecord = {
   appearanceIndex: number
   changeReason: string
   description: string | null
+  promptSuffixOverride?: string | null
+  artStylePromptOverride?: string | null
   imageUrl: string | null
   media?: MediaRef | null
   imageUrls: string[]
@@ -140,6 +142,8 @@ function createVariant(params: {
   index: number
   label: string
   description: string | null
+  promptSuffixOverride?: string | null
+  artStylePromptOverride?: string | null
   selectedRenderIndex: number | null
   renders: AssetRenderSummary[]
   taskRefs: AssetTaskRef[]
@@ -149,6 +153,8 @@ function createVariant(params: {
     index: params.index,
     label: params.label,
     description: params.description,
+    promptSuffixOverride: params.promptSuffixOverride ?? null,
+    artStylePromptOverride: params.artStylePromptOverride ?? null,
     renders: params.renders,
     selectionState: {
       selectedRenderIndex: params.selectedRenderIndex,
@@ -185,6 +191,8 @@ export function mapProjectCharacterToAsset(character: ProjectCharacterRecord): C
       index: appearance.appearanceIndex,
       label: appearance.changeReason,
       description: appearance.description,
+      promptSuffixOverride: appearance.promptSuffixOverride ?? null,
+      artStylePromptOverride: appearance.artStylePromptOverride ?? null,
       selectedRenderIndex: appearance.selectedIndex,
       renders,
       taskRefs: [
@@ -262,6 +270,8 @@ export function mapGlobalCharacterToAsset(character: GlobalCharacterRecord): Cha
       index: appearance.appearanceIndex,
       label: appearance.changeReason,
       description: appearance.description,
+      promptSuffixOverride: null,
+      artStylePromptOverride: null,
       selectedRenderIndex: appearance.selectedIndex,
       renders,
       taskRefs: [

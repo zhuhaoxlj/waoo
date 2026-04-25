@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { resolveErrorDisplay } from '@/lib/errors/display'
@@ -39,20 +40,27 @@ type CharacterCardGalleryProps =
 
 export default function CharacterCardGallery(props: CharacterCardGalleryProps) {
   const t = useTranslations('assets')
+  const [localSelectedIndex, setLocalSelectedIndex] = useState<number | null | undefined>(undefined)
+
+  useEffect(() => {
+    if (props.mode !== 'selection') return
+    setLocalSelectedIndex(props.selectedIndex)
+  }, [props.mode, props.selectedIndex])
 
   if (props.mode === 'selection') {
     return (
       <div className="grid grid-cols-3 gap-3">
         {props.imageUrlsWithIndex.map(({ url, originalIndex }) => {
-          const isThisSelected = props.selectedIndex === originalIndex
+          const effectiveSelectedIndex = localSelectedIndex === undefined ? props.selectedIndex : localSelectedIndex
+          const isThisSelected = effectiveSelectedIndex === originalIndex
           const isThisTaskRunning = props.isImageTaskRunning(originalIndex) || props.isGroupTaskRunning
           return (
             <div key={originalIndex} className="relative group/thumb">
               <div
                 onClick={() => props.onImageClick(url)}
-                className={`rounded-lg overflow-hidden border-2 transition-all cursor-pointer relative ${isThisSelected
+                className={`rounded-lg overflow-hidden border-2 transition-all cursor-pointer relative outline-none ${isThisSelected
                   ? 'border-[var(--glass-stroke-success)] ring-2 ring-[var(--glass-focus-ring)]'
-                  : 'border-[var(--glass-stroke-base)] hover:border-[var(--glass-stroke-focus)]'
+                  : 'border-[var(--glass-stroke-base)] hover:border-[var(--glass-tone-success-fg)]'
                   }`}
               >
                 <MediaImageWithLoading
@@ -80,13 +88,15 @@ export default function CharacterCardGallery(props: CharacterCardGalleryProps) {
                   onClick={(e) => {
                     e.stopPropagation()
                     if (!isThisTaskRunning) {
-                      props.onSelectImage?.(props.characterId, props.appearanceId, isThisSelected ? null : originalIndex)
+                      const nextIndex = isThisSelected ? null : originalIndex
+                      setLocalSelectedIndex(nextIndex)
+                      props.onSelectImage?.(props.characterId, props.appearanceId, nextIndex)
                     }
                   }}
                   disabled={isThisTaskRunning}
-                  className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm ${isThisSelected
+                  className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--glass-tone-success-fg)] ${isThisSelected
                     ? 'bg-[var(--glass-tone-success-fg)] text-white'
-                    : 'bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-accent-from)] hover:text-white'
+                    : 'bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-tone-success-fg)] hover:text-white'
                     } disabled:opacity-50`}
                   title={isThisSelected ? t('image.cancelSelection') : t('image.useThis')}
                 >

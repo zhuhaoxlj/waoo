@@ -7,7 +7,10 @@ import { NextIntlClientProvider } from 'next-intl'
 import type { AbstractIntlMessages } from 'next-intl'
 import CharacterSection from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/assets/CharacterSection'
 
-const characterCardMock = vi.hoisted(() => vi.fn((_props: unknown) => null))
+const characterCardMock = vi.hoisted(() => vi.fn((...args: unknown[]) => {
+  void args
+  return null
+}))
 
 vi.mock('@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/assets/CharacterCard', () => ({
   __esModule: true,
@@ -138,6 +141,7 @@ describe('CharacterSection actions', () => {
         onVoiceDesign: () => undefined,
         onVoiceSelectFromHub: () => undefined,
         onCopyFromGlobal: () => undefined,
+        onEditGeneratePrompt: () => undefined,
         getAppearances: (character) => character.appearances,
         unconfirmedCharacters: [],
         isConfirmingCharacter: () => false,

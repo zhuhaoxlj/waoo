@@ -48,6 +48,7 @@ interface CharacterCardProps {
   onVoiceChange?: (characterId: string, customVoiceUrl?: string) => void
   onVoiceDesign?: (characterId: string, characterName: string) => void  // AI 声音设计
   onVoiceSelectFromHub?: (characterId: string) => void  // 从资产中心选择音色
+  onEditGeneratePrompt?: () => void
 }
 
 export default function CharacterCard({
@@ -71,11 +72,13 @@ export default function CharacterCard({
   onConfirmSelection,
   onVoiceChange,
   onVoiceDesign,
-  onVoiceSelectFromHub
+  onVoiceSelectFromHub,
+  onEditGeneratePrompt
 }: CharacterCardProps) {
   // 🔥 使用 mutation
   const uploadImage = useUploadProjectCharacterImage(projectId)
   const t = useTranslations('assets')
+  const tCharacterProfile = useTranslations('assets.characterProfile')
   const { count: generationCount, setCount: setGenerationCount } = useImageGenerationCount('character')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [pendingUploadIndex, setPendingUploadIndex] = useState<number | undefined>(undefined)
@@ -217,6 +220,17 @@ export default function CharacterCard({
   if (showSelectionMode) {
     const selectionActions = (
       <>
+        {isPrimaryAppearance && onEditGeneratePrompt && (
+          <button
+            onClick={onEditGeneratePrompt}
+            disabled={isAppearanceTaskRunning || isAnyTaskRunning || uploadImage.isPending}
+            className="inline-flex h-6 items-center justify-center gap-1 rounded-md px-1.5 hover:bg-[var(--glass-tone-info-bg)] transition-colors disabled:opacity-50"
+            title={tCharacterProfile('editGeneratePrompt')}
+          >
+            <AppIcon name="edit" className="w-4 h-4 text-[var(--glass-tone-info-fg)]" />
+            <span className="text-[10px] font-medium text-[var(--glass-tone-info-fg)]">{tCharacterProfile('editGeneratePrompt')}</span>
+          </button>
+        )}
         <ImageGenerationInlineCountButton
           prefix={isGroupTaskRunning ? (
             <>
@@ -378,15 +392,17 @@ export default function CharacterCard({
   const compactHeaderActions = (
     <>
       <button
-        onClick={onEdit}
+        type="button"
+        onClick={isPrimaryAppearance && onEditGeneratePrompt ? onEditGeneratePrompt : onEdit}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-bg-muted)] flex items-center justify-center transition-colors"
-        title={t('video.panelCard.editPrompt')}
+        title={isPrimaryAppearance && onEditGeneratePrompt ? tCharacterProfile('editGeneratePrompt') : t('video.panelCard.editPrompt')}
       >
         <AppIcon name="edit" className="w-3.5 h-3.5 text-[var(--glass-text-secondary)]" />
       </button>
       {showDeleteButton && (
         <div className="relative">
           <button
+            type="button"
             onClick={handleDeleteClick}
             className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-tone-danger-bg)] flex items-center justify-center transition-colors"
             title={appearanceCount <= 1 ? t('character.delete') : t('character.deleteOptions')}
@@ -402,6 +418,7 @@ export default function CharacterCard({
               />
               <div className="absolute right-0 top-full mt-1 z-20 bg-[var(--glass-bg-surface)] border border-[var(--glass-stroke-base)] rounded-lg shadow-lg py-1 min-w-[100px]">
                 <button
+                  type="button"
                   onClick={() => {
                     setShowDeleteMenu(false)
                     onDeleteAppearance?.()
@@ -411,6 +428,7 @@ export default function CharacterCard({
                   {t('image.deleteThis')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowDeleteMenu(false)
                     onDelete()

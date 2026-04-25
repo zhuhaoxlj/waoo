@@ -47,10 +47,10 @@ export default function CharacterCardHeader(props: CharacterCardHeaderProps) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-1">
-        <div className="text-xs font-semibold text-[var(--glass-text-primary)] truncate" title={props.characterName}>
+        <div className="min-w-0 flex-1 text-xs font-semibold text-[var(--glass-text-primary)] truncate" title={props.characterName}>
           {props.characterName}
         </div>
-        <div className="flex items-center gap-1">{props.actions}</div>
+        <div className="relative z-10 flex items-center gap-1 pointer-events-auto">{props.actions}</div>
       </div>
       <div className="text-xs text-[var(--glass-text-secondary)] truncate" title={props.changeReason}>
         {props.changeReason}

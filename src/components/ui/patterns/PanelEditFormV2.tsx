@@ -39,30 +39,38 @@ export default function PanelEditFormV2({
   uiMode = 'flow'
 }: PanelEditFormV2Props) {
   const t = useTranslations('storyboard')
+  const showSaving = saveStatus === 'saving' || isSaving
+  const showError = saveStatus === 'error'
 
   return (
     <div className={`ui-pattern-form ui-pattern-form-${uiMode} space-y-2`}>
-      {saveStatus === 'saving' || isSaving ? (
-        <GlassChip tone="info" icon={<span className="h-2 w-2 animate-pulse rounded-full bg-current" />}>
-          {t('common.saving')}
-        </GlassChip>
-      ) : null}
-      {saveStatus === 'error' ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <GlassChip tone="danger">
-            {saveErrorMessage || t('common.saveFailed')}
-          </GlassChip>
-          {onRetrySave ? (
-            <button
-              type="button"
-              onClick={onRetrySave}
-              className="glass-btn-base glass-btn-soft px-2 py-1 text-xs"
-            >
-              {t('common.retrySave')}
-            </button>
-          ) : null}
+      <div className="min-h-8">
+        <div
+          className={`flex flex-wrap items-center gap-2 transition-opacity duration-150 ${showSaving || showError ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          aria-live="polite"
+        >
+          {showError ? (
+            <>
+              <GlassChip tone="danger">
+                {saveErrorMessage || t('common.saveFailed')}
+              </GlassChip>
+              {onRetrySave ? (
+                <button
+                  type="button"
+                  onClick={onRetrySave}
+                  className="glass-btn-base glass-btn-soft px-2 py-1 text-xs"
+                >
+                  {t('common.retrySave')}
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <GlassChip tone="info" icon={<span className="h-2 w-2 animate-pulse rounded-full bg-current" />}>
+              {t('common.saving')}
+            </GlassChip>
+          )}
         </div>
-      ) : null}
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <GlassField label={t('panel.shotTypeLabel')}>

@@ -34,6 +34,8 @@ model CharacterAppearance {
   changeReason         String
   description          String?                 @db.Text
   descriptions         String?                 @db.Text
+  promptSuffixOverride String?                 @db.Text
+  artStylePromptOverride String?               @db.Text
   imageUrl             String?                 @db.Text
   imageUrls            String?                 @db.Text
   selectedIndex        Int?

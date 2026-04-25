@@ -26,6 +26,10 @@ interface UseAssetsGlobalActionsParams {
 
 const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
 
+function isTaskResultTimeout(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith('Task timeout:')
+}
+
 type GlobalAnalyzeTaskSnapshot = Pick<TaskTargetState, 'phase' | 'runningTaskId' | 'lastError'> | null
 
 function isRunningPhase(phase: TaskTargetState['phase'] | null | undefined): boolean {
@@ -192,8 +196,8 @@ export function useAssetsGlobalActions({
 
       try {
         const result = await waitForTaskResult(completion.finishedTaskId, {
-          intervalMs: 100,
-          timeoutMs: 2_000,
+          intervalMs: 300,
+          timeoutMs: 30_000,
         }) as { stats?: { newCharacters?: number; newLocations?: number } }
         await Promise.resolve(onRefresh())
         showToast(
@@ -205,6 +209,18 @@ export function useAssetsGlobalActions({
           5000,
         )
       } catch (error: unknown) {
+        if (isTaskResultTimeout(error)) {
+          await Promise.resolve(onRefresh())
+          showToast(
+            t('toolbar.globalAnalyzeSuccess', {
+              characters: 0,
+              locations: 0,
+            }),
+            'success',
+            5000,
+          )
+          return
+        }
         _ulogError('Global analyze finalize error:', error)
         showToast(`${t('toolbar.globalAnalyzeFailed')}: ${getErrorMessage(error)}`, 'error', 5000)
       }

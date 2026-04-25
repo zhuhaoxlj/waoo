@@ -173,11 +173,17 @@ export function useUpdateProjectAppearanceDescription(projectId: string) {
             characterId,
             appearanceId,
             description,
+            descriptions,
+            promptSuffixOverride,
+            artStylePromptOverride,
             descriptionIndex,
         }: {
             characterId: string
             appearanceId: string
             description: string
+            descriptions?: string[]
+            promptSuffixOverride?: string | null
+            artStylePromptOverride?: string | null
             descriptionIndex?: number
         }) => {
             return await requestJsonWithError(`/api/assets/${characterId}/variants/${appearanceId}`, {
@@ -188,6 +194,9 @@ export function useUpdateProjectAppearanceDescription(projectId: string) {
                     kind: 'character',
                     projectId,
                     description,
+                    ...(descriptions ? { descriptions } : {}),
+                    ...(promptSuffixOverride !== undefined ? { promptSuffixOverride } : {}),
+                    ...(artStylePromptOverride !== undefined ? { artStylePromptOverride } : {}),
                     descriptionIndex: typeof descriptionIndex === 'number' ? descriptionIndex : 0,
                 }),
             }, 'Failed to update appearance description')

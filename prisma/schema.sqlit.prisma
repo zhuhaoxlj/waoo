@@ -32,9 +32,11 @@ model CharacterAppearance {
   characterId          String
   appearanceIndex      Int
   changeReason         String
-  description          String?
-  descriptions         String?
-  imageUrl             String?
+  description          String?                 
+  descriptions         String?                 
+  promptSuffixOverride String?
+  artStylePromptOverride String?
+  imageUrl             String?                 
   imageUrls            String?
   selectedIndex        Int?
   createdAt            DateTime                @default(now())

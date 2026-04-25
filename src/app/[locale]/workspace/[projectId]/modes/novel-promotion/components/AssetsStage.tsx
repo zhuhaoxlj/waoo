@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/contexts/ToastContext'
 /**
  * 资产确认阶段 - 小说推文模式专用
@@ -19,6 +19,7 @@ import { useState, useCallback, useMemo } from 'react'
 // 移除了 useRouter 导入，因为不再需要在组件中操作 URL
 import { Character, CharacterAppearance, NovelPromotionClip } from '@/types/project'
 import { resolveTaskPresentationState } from '@/lib/task/presentation'
+import { CHARACTER_PROMPT_SUFFIX, getArtStylePrompt } from '@/lib/constants'
 import {
   useAssetActions,
   useGenerateProjectCharacterImage,
@@ -27,6 +28,8 @@ import {
   useRefreshProjectAssets,
   useEpisodes,
   useEpisodeData,
+  useUpdateProjectAppearanceDescription,
+  useProjectData,
 } from '@/lib/query/hooks'
 import {
   getAllClipsAssets,
@@ -52,6 +55,7 @@ import AssetFilterBar, { type AssetKindFilter } from './assets/AssetFilterBar'
 import AssetsStageStatusOverlays from './assets/AssetsStageStatusOverlays'
 import AssetsStageModals from './assets/AssetsStageModals'
 import CharacterAnalysisPromptModal from './assets/CharacterAnalysisPromptModal'
+import CharacterGenerationPromptModal from './assets/CharacterGenerationPromptModal'
 import CharacterReanalysisConsole from './assets/CharacterReanalysisConsole'
 
 interface AssetsStageProps {
@@ -72,7 +76,19 @@ export default function AssetsStage({
   triggerGlobalAnalyze = false,
   onGlobalAnalyzeComplete
 }: AssetsStageProps) {
+  const locale = useLocale()
+  interface CharacterPromptEditorState {
+    characterId: string
+    characterName: string
+    appearanceId: string
+    descriptions: string[]
+    promptSuffixOverride?: string | null
+    artStylePromptOverride?: string | null
+    descriptionIndex?: number
+  }
+
   const { data: projectAssets } = useProjectAssets(projectId)
+  const { data: project } = useProjectData(projectId)
   const characters = useMemo(() => projectAssets?.characters ?? [], [projectAssets?.characters])
   const locations = useMemo(() => projectAssets?.locations ?? [], [projectAssets?.locations])
   const props = useMemo(() => projectAssets?.props ?? [], [projectAssets?.props])
@@ -118,6 +134,7 @@ export default function AssetsStage({
   const [kindFilter, setKindFilter] = useState<AssetKindFilter>('all')
   const [episodeFilter, setEpisodeFilter] = useState<string | null>(null)
   const [showCharacterPromptEditor, setShowCharacterPromptEditor] = useState(false)
+  const [characterGenerationPromptEditor, setCharacterGenerationPromptEditor] = useState<CharacterPromptEditorState | null>(null)
 
   // 获取剧集列表
   const { episodes } = useEpisodes(projectId)
@@ -364,6 +381,28 @@ export default function AssetsStage({
     closeImageEditModal,
     closeCharacterImageEditModal,
   })
+  const updateAppearanceDescription = useUpdateProjectAppearanceDescription(projectId)
+
+  const handleSaveCharacterGenerationPrompt = useCallback(async (payload: {
+    descriptions: string[]
+    promptSuffixOverride: string
+    artStylePromptOverride: string
+  }) => {
+    if (!characterGenerationPromptEditor) return
+
+    await updateAppearanceDescription.mutateAsync({
+      characterId: characterGenerationPromptEditor.characterId,
+      appearanceId: characterGenerationPromptEditor.appearanceId,
+      description: payload.descriptions[0] || payload.descriptions.find((item) => item) || '',
+      descriptions: payload.descriptions,
+      promptSuffixOverride: payload.promptSuffixOverride,
+      artStylePromptOverride: payload.artStylePromptOverride,
+      descriptionIndex: characterGenerationPromptEditor.descriptionIndex,
+    })
+    setCharacterGenerationPromptEditor(null)
+    await Promise.resolve(onRefresh())
+    showToast(t('characterProfile.editGeneratePromptSaved'), 'success')
+  }, [characterGenerationPromptEditor, onRefresh, showToast, t, updateAppearanceDescription])
 
   return (
     <div className="space-y-4">
@@ -435,6 +474,7 @@ export default function AssetsStage({
             onVoiceDesign={handleOpenVoiceDesign}
             onVoiceSelectFromHub={handleVoiceSelectFromHub}
             onCopyFromGlobal={handleCopyFromGlobal}
+            onEditGeneratePrompt={setCharacterGenerationPromptEditor}
             getAppearances={getAppearances}
             // 🔥 V7：待确认角色档案内嵌到 CharacterSection
             unconfirmedCharacters={unconfirmedCharacters}
@@ -543,6 +583,17 @@ export default function AssetsStage({
         isOpen={showCharacterPromptEditor}
         onClose={() => setShowCharacterPromptEditor(false)}
         onSaved={() => showToast(t('characterProfile.editAnalyzePromptSaved'), 'success')}
+      />
+
+      <CharacterGenerationPromptModal
+        isOpen={!!characterGenerationPromptEditor}
+        characterName={characterGenerationPromptEditor?.characterName ?? ''}
+        initialValues={characterGenerationPromptEditor?.descriptions ?? ['', '', '']}
+        initialPromptSuffix={characterGenerationPromptEditor?.promptSuffixOverride ?? CHARACTER_PROMPT_SUFFIX}
+        initialArtStylePrompt={characterGenerationPromptEditor?.artStylePromptOverride ?? getArtStylePrompt(project?.novelPromotionData?.artStyle ?? null, locale === 'en' ? 'en' : 'zh')}
+        isSaving={updateAppearanceDescription.isPending}
+        onClose={() => setCharacterGenerationPromptEditor(null)}
+        onSave={handleSaveCharacterGenerationPrompt}
       />
     </div>
   )

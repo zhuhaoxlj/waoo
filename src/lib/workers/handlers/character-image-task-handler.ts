@@ -34,6 +34,8 @@ interface CharacterAppearanceRecord {
   appearanceIndex: number
   descriptions: string | null
   description: string | null
+  promptSuffixOverride: string | null
+  artStylePromptOverride: string | null
   imageUrls: string | null
   selectedIndex: number | null
   imageUrl: string | null
@@ -55,6 +57,21 @@ interface CharacterRecord {
 interface PrimaryAppearanceRecord {
   imageUrl: string | null
   imageUrls: string | null
+}
+
+function buildCharacterPrompt(basePrompt: string, promptSuffixOverride: string | null, artStylePromptOverride: string | null, fallbackArtStylePrompt: string): string {
+  const suffixText = typeof promptSuffixOverride === 'string' && promptSuffixOverride.trim().length > 0
+    ? promptSuffixOverride.trim()
+    : null
+  const promptWithSuffix = suffixText
+    ? `${basePrompt.trim()}${basePrompt.trim() ? '，' : ''}${suffixText}`
+    : addCharacterPromptSuffix(basePrompt)
+
+  const artStyleText = typeof artStylePromptOverride === 'string' && artStylePromptOverride.trim().length > 0
+    ? artStylePromptOverride.trim()
+    : fallbackArtStylePrompt
+
+  return artStyleText ? `${promptWithSuffix}，${artStyleText}` : promptWithSuffix
 }
 
 interface CharacterImageDb {
@@ -145,7 +162,12 @@ export async function handleCharacterImageTask(job: Job<TaskJobData>) {
   for (let i = 0; i < indexes.length; i++) {
     const index = indexes[i]
     const raw = baseDescriptions[index] || baseDescriptions[0]
-    const prompt = artStyle ? `${addCharacterPromptSuffix(raw)}，${artStyle}` : addCharacterPromptSuffix(raw)
+    const prompt = buildCharacterPrompt(
+      raw,
+      appearance.promptSuffixOverride,
+      appearance.artStylePromptOverride,
+      artStyle,
+    )
 
     await reportTaskProgress(job, 15 + Math.floor((i / Math.max(indexes.length, 1)) * 55), {
       stage: 'generate_character_image',

@@ -48,6 +48,15 @@ interface CharacterSectionProps {
     onVoiceDesign: (characterId: string, characterName: string) => void
     onVoiceSelectFromHub: (characterId: string) => void  // 🆕 从资产中心选择音色
     onCopyFromGlobal: (characterId: string) => void  // 🆕 从资产中心复制
+    onEditGeneratePrompt: (payload: {
+        characterId: string
+        characterName: string
+        appearanceId: string
+        descriptions: string[]
+        promptSuffixOverride?: string | null
+        artStylePromptOverride?: string | null
+        descriptionIndex?: number
+    }) => void
     // 辅助函数
     getAppearances: (character: Character) => CharacterAppearance[]
     // 🔥 V7：待确认角色档案（内嵌到 CharacterSection）
@@ -91,6 +100,7 @@ export default function CharacterSection({
     onVoiceDesign,
     onVoiceSelectFromHub,
     onCopyFromGlobal,
+    onEditGeneratePrompt,
     getAppearances,
     // 🔥 V7：待确认角色
     unconfirmedCharacters,
@@ -421,6 +431,20 @@ export default function CharacterSection({
                                             onVoiceChange={(characterId: string, customVoiceUrl?: string) => customVoiceUrl && onVoiceChange(characterId, customVoiceUrl)}
                                             onVoiceDesign={onVoiceDesign}
                                             onVoiceSelectFromHub={onVoiceSelectFromHub}
+                                            onEditGeneratePrompt={() => onEditGeneratePrompt({
+                                                characterId: character.id,
+                                                characterName: character.name,
+                                                appearanceId: appearance.id,
+                                                descriptions: (() => {
+                                                    const baseDescriptions = Array.isArray(appearance.descriptions) && appearance.descriptions.length > 0
+                                                        ? appearance.descriptions
+                                                        : [appearance.description || '']
+                                                    return Array.from({ length: 3 }, (_value, index) => baseDescriptions[index] || '')
+                                                })(),
+                                                promptSuffixOverride: appearance.promptSuffixOverride ?? null,
+                                                artStylePromptOverride: appearance.artStylePromptOverride ?? null,
+                                                descriptionIndex: 0,
+                                            })}
                                         />
                                     )
                                 })}

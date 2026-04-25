@@ -340,6 +340,7 @@ export default function LocationCard({
     <>
       {onCopyFromGlobal && (
           <button
+            type="button"
             onClick={onCopyFromGlobal}
           className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-tone-info-bg)] flex items-center justify-center transition-colors"
           title={t('character.copyFromGlobal')}
@@ -348,6 +349,7 @@ export default function LocationCard({
         </button>
       )}
         <button
+          type="button"
           onClick={onEdit}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-bg-muted)] flex items-center justify-center transition-colors"
           title={t(`${assetKey}.edit`)}
@@ -355,6 +357,7 @@ export default function LocationCard({
         <AppIcon name="edit" className="w-3.5 h-3.5 text-[var(--glass-text-secondary)]" />
       </button>
         <button
+          type="button"
           onClick={onDelete}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-tone-danger-bg)] flex items-center justify-center transition-colors"
           title={t(`${assetKey}.delete`)}

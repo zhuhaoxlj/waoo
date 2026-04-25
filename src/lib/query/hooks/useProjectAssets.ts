@@ -28,6 +28,8 @@ function mapCharacterAssetToProjectCharacter(asset: AssetGroupMap['character'][n
             changeReason: variant.label,
             description: variant.description,
             descriptions: null,
+            promptSuffixOverride: variant.promptSuffixOverride ?? null,
+            artStylePromptOverride: variant.artStylePromptOverride ?? null,
             imageUrl: variant.renders.find((render) => render.isSelected)?.imageUrl
                 ?? variant.renders[0]?.imageUrl
                 ?? null,

@@ -37,6 +37,8 @@ export interface CharacterAppearance {
   changeReason: string              // "初始形象"、"落水湿身"
   description: string | null
   descriptions: string[] | null     // 3个描述变体
+  promptSuffixOverride?: string | null
+  artStylePromptOverride?: string | null
   imageUrl: string | null           // 选中的图片
   media?: MediaRef | null
   imageUrls: string[]               // 候选图片数组

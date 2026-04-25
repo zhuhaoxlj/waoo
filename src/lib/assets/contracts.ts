@@ -49,6 +49,8 @@ export type AssetVariantSummary = {
   index: number
   label: string
   description: string | null
+  promptSuffixOverride?: string | null
+  artStylePromptOverride?: string | null
   selectionState: {
     selectedRenderIndex: number | null
   }
