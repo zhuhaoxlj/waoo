@@ -477,7 +477,7 @@ export default function LLMStageStreamCard({
           </ul>
         </aside>
 
-        <section className="glass-surface-soft min-h-[320px] rounded-xl border border-[var(--glass-stroke-base)]">
+        <section className="glass-surface-soft flex min-h-0 flex-col rounded-xl border border-[var(--glass-stroke-base)]">
           <div className="border-b border-[var(--glass-stroke-base)] px-4 py-3 text-sm font-medium text-[var(--glass-text-primary)]">
             {t('stageCard.outputTitle', {
               stage: resolveProgressText(outputStage?.title, 'stageCard.currentStage'),
@@ -485,7 +485,7 @@ export default function LLMStageStreamCard({
           </div>
           <div
             ref={outputRef}
-            className="h-[52vh] overflow-y-auto px-4 py-4"
+            className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
           >
             {structuredOutput.hasStructured ? (
               <div className="space-y-4">

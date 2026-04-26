@@ -27,17 +27,25 @@ vi.mock('@/components/llm-console/LLMStageStreamCard', () => ({
     placeholderText,
     topRightAction,
     renderStageActions,
+    onRetryStage,
   }: {
     title: string
     stages: Array<{ id: string; title: string }>
     placeholderText?: string
     topRightAction?: React.ReactNode
     renderStageActions?: (stage: { id: string; title: string }) => React.ReactNode
+    onRetryStage?: (stageId: string) => void
   }) => createElement(
     'section',
     null,
     `LLMStageStreamCard:${title}:${placeholderText || ''}`,
-    stages.map((stage) => createElement('div', { key: stage.id }, `${stage.id}:${stage.title}`, renderStageActions?.(stage))),
+    stages.map((stage) => createElement(
+      'div',
+      { key: stage.id },
+      `${stage.id}:${stage.title}`,
+      renderStageActions?.(stage),
+      onRetryStage ? createElement('button', { type: 'button', onClick: () => onRetryStage(stage.id) }, `retry:${stage.id}`) : null,
+    )),
     topRightAction,
   ),
 }))

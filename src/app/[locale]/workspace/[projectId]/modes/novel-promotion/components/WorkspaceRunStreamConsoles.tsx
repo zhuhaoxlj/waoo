@@ -328,6 +328,41 @@ export default function WorkspaceRunStreamConsoles({
     })
   }
 
+  const resolveRetryableRawStepId = (
+    stream: RunStreamState,
+    aggregatedStageId: string,
+    resolveStageId: (stepId: string | null | undefined) => string | null,
+  ): string => {
+    const candidates = stream.stages.filter((stage) => resolveStageId(stage.id) === aggregatedStageId)
+    if (candidates.length === 0) {
+      return aggregatedStageId
+    }
+
+    const selectedRawId = stream.selectedStep?.id
+    if (selectedRawId) {
+      const selected = candidates.find((stage) => stage.id === selectedRawId)
+      if (selected && selected.retryable !== false) {
+        return selected.id
+      }
+    }
+
+    const activeRawId = stream.activeStepId
+    if (activeRawId) {
+      const active = candidates.find((stage) => stage.id === activeRawId)
+      if (active && active.retryable !== false) {
+        return active.id
+      }
+    }
+
+    const failed = candidates.find((stage) => stage.status === 'failed' && stage.retryable !== false)
+    if (failed) {
+      return failed.id
+    }
+
+    const retryable = candidates.find((stage) => stage.retryable !== false)
+    return retryable?.id || candidates[0].id
+  }
+
   const handleAggregatedStageSelect = (
     stream: RunStreamState,
     stageId: string,
@@ -445,7 +480,8 @@ export default function WorkspaceRunStreamConsoles({
               selectedStageId={storyToScriptSelectedStageId || undefined}
               onSelectStage={(stageId) => handleAggregatedStageSelect(storyToScriptStream, stageId, resolveStoryToScriptStageId)}
               onRetryStage={(stepId) => {
-                void handleRetryStepById(storyToScriptStream, stepId)
+                const rawStepId = resolveRetryableRawStepId(storyToScriptStream, stepId, resolveStoryToScriptStageId)
+                void handleRetryStepById(storyToScriptStream, rawStepId)
               }}
               outputText={storyToScriptStream.outputText}
               placeholderText={storyToScriptPendingStart ? t('runConsole.storyToScriptWaiting') : undefined}
@@ -524,7 +560,8 @@ export default function WorkspaceRunStreamConsoles({
               selectedStageId={scriptToStoryboardSelectedStageId || undefined}
               onSelectStage={(stageId) => handleAggregatedStageSelect(scriptToStoryboardStream, stageId, resolveScriptToStoryboardStageId)}
               onRetryStage={(stepId) => {
-                void handleRetryStepById(scriptToStoryboardStream, stepId)
+                const rawStepId = resolveRetryableRawStepId(scriptToStoryboardStream, stepId, resolveScriptToStoryboardStageId)
+                void handleRetryStepById(scriptToStoryboardStream, rawStepId)
               }}
               outputText={scriptToStoryboardStream.outputText}
               placeholderText={scriptToStoryboardPendingStart ? t('runConsole.scriptToStoryboardWaiting') : undefined}
