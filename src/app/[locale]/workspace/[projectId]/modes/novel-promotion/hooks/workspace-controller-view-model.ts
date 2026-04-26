@@ -89,6 +89,7 @@ interface BuildWorkspaceControllerViewModelParams {
     isConfirmingAssets: boolean
     isTransitioning: boolean
     storyToScriptPendingStart: boolean
+    scriptToStoryboardPendingStart: boolean
     isStartingStoryToScript: boolean
     isStartingScriptToStoryboard: boolean
     transitionProgress: { step?: string; total?: number; current?: number }
@@ -102,6 +103,8 @@ interface BuildWorkspaceControllerViewModelParams {
     handleAnalyzeAssets: () => Promise<void>
     openStoryToScriptPendingStart: () => void
     cancelStoryToScriptPendingStart: () => void
+    openScriptToStoryboardPendingStart: () => void
+    cancelScriptToStoryboardPendingStart: () => void
     runStoryToScriptFlow: () => Promise<void>
     runScriptToStoryboardFlow: () => Promise<void>
     showCreatingToast: boolean

@@ -46,8 +46,8 @@ function NovelPromotionWorkspaceContent(props: NovelPromotionWorkspaceProps) {
     vm.execution.storyToScriptConsoleMinimized
 
   const showScriptToStoryboardMinBadge =
-    scriptToStoryboardStream.isVisible &&
-    scriptToStoryboardActive &&
+    (vm.execution.scriptToStoryboardPendingStart || scriptToStoryboardStream.isVisible) &&
+    (vm.execution.scriptToStoryboardPendingStart || scriptToStoryboardActive) &&
     vm.execution.scriptToStoryboardConsoleMinimized
 
   const runBadges: { id: string; label: string; onClick: () => void }[] = []
@@ -65,7 +65,9 @@ function NovelPromotionWorkspaceContent(props: NovelPromotionWorkspaceProps) {
   if (showScriptToStoryboardMinBadge) {
     runBadges.push({
       id: 'script-to-storyboard',
-      label: tProgress('runConsole.scriptToStoryboardRunning'),
+      label: vm.execution.scriptToStoryboardPendingStart
+        ? tProgress('runConsole.start')
+        : tProgress('runConsole.scriptToStoryboardRunning'),
       onClick: () => vm.execution.setScriptToStoryboardConsoleMinimized(false),
     })
   }
@@ -165,12 +167,18 @@ function NovelPromotionWorkspaceContent(props: NovelPromotionWorkspaceProps) {
           scriptToStoryboardStream={vm.execution.scriptToStoryboardStream}
           storyToScriptPendingStart={vm.execution.storyToScriptPendingStart}
           storyToScriptLaunching={vm.execution.isTransitioning}
+          scriptToStoryboardPendingStart={vm.execution.scriptToStoryboardPendingStart}
+          scriptToStoryboardLaunching={vm.execution.isConfirmingAssets}
           storyToScriptConsoleMinimized={vm.execution.storyToScriptConsoleMinimized}
           scriptToStoryboardConsoleMinimized={vm.execution.scriptToStoryboardConsoleMinimized}
           onStartStoryToScript={() => {
             void vm.rebuild.runWithRebuildConfirm('storyToScript', vm.execution.runStoryToScriptFlow)
           }}
           onCancelStoryToScriptPendingStart={vm.execution.cancelStoryToScriptPendingStart}
+          onStartScriptToStoryboard={() => {
+            void vm.rebuild.runWithRebuildConfirm('scriptToStoryboard', vm.execution.runScriptToStoryboardFlow)
+          }}
+          onCancelScriptToStoryboardPendingStart={vm.execution.cancelScriptToStoryboardPendingStart}
           onStoryToScriptMinimizedChange={vm.execution.setStoryToScriptConsoleMinimized}
           onScriptToStoryboardMinimizedChange={vm.execution.setScriptToStoryboardConsoleMinimized}
           hideMinimizedBadges={vm.execution.showCreatingToast}

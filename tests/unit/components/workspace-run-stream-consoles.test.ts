@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createElement } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import WorkspaceRunStreamConsoles from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/WorkspaceRunStreamConsoles'
 
@@ -16,6 +16,8 @@ vi.mock('@/contexts/ToastContext', () => ({
     showToast: showToastMock,
   }),
 }))
+
+const fetchMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/components/llm-console/LLMStageStreamCard', () => ({
   __esModule: true,
@@ -38,6 +40,11 @@ vi.mock('@/components/llm-console/LLMStageStreamCard', () => ({
     stages.map((stage) => createElement('div', { key: stage.id }, `${stage.id}:${stage.title}`, renderStageActions?.(stage))),
     topRightAction,
   ),
+}))
+
+vi.mock('@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/assets/PromptTemplateModal', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => createElement('div', null, `PromptTemplateModal:${title}`),
 }))
 
 function createStreamState(overrides?: Partial<React.ComponentProps<typeof WorkspaceRunStreamConsoles>['storyToScriptStream']>) {
@@ -68,6 +75,11 @@ function createStreamState(overrides?: Partial<React.ComponentProps<typeof Works
 }
 
 describe('WorkspaceRunStreamConsoles', () => {
+  beforeEach(() => {
+    fetchMock.mockReset()
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
   it('shows fallback running console when a recovered run has no stages yet', () => {
     Reflect.set(globalThis, 'React', React)
 
@@ -151,5 +163,41 @@ describe('WorkspaceRunStreamConsoles', () => {
     )
 
     expect(html).toContain('LLMStageStreamCard:runConsole.storyToScript')
+  })
+
+  it('shows start action and edit buttons when script-to-storyboard is pending manual start', () => {
+    Reflect.set(globalThis, 'React', React)
+
+    const html = renderToStaticMarkup(
+      createElement(WorkspaceRunStreamConsoles, {
+        storyToScriptStream: createStreamState({
+          status: 'idle',
+          isVisible: false,
+          isRecoveredRunning: false,
+        }),
+        scriptToStoryboardStream: createStreamState({
+          status: 'idle',
+          isVisible: false,
+          isRecoveredRunning: false,
+        }),
+        storyToScriptConsoleMinimized: true,
+        scriptToStoryboardPendingStart: true,
+        scriptToStoryboardConsoleMinimized: false,
+        onStartScriptToStoryboard: () => undefined,
+        onCancelScriptToStoryboardPendingStart: () => undefined,
+        onStoryToScriptMinimizedChange: () => undefined,
+        onScriptToStoryboardMinimizedChange: () => undefined,
+      }),
+    )
+
+    expect(html).toContain('LLMStageStreamCard:runConsole.scriptToStoryboard')
+    expect(html).toContain('runConsole.start')
+    expect(html).toContain('runConsole.scriptToStoryboardWaiting')
+    expect(html).toContain('storyboard_plan:progress.streamStep.storyboardPlan')
+    expect(html).toContain('cinematography_rules:progress.streamStep.cinematographyRules')
+    expect(html).toContain('acting_direction:progress.streamStep.actingDirection')
+    expect(html).toContain('storyboard_detail_refine:progress.streamStep.storyboardDetailRefine')
+    expect(html).toContain('voice_analyze:progress.streamStep.voiceAnalyze')
+    expect(html).toContain('runConsole.editPrompt')
   })
 })

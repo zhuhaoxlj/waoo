@@ -6,6 +6,11 @@ import LLMStageStreamCard, { type LLMStageViewItem } from '@/components/llm-cons
 import { useToast } from '@/contexts/ToastContext'
 import { useLocale, useTranslations } from 'next-intl'
 import {
+  SCRIPT_TO_STORYBOARD_EDITABLE_STAGES,
+  resolveScriptToStoryboardStageId,
+  type ScriptToStoryboardEditableStageId,
+} from '@/lib/novel-promotion/script-to-storyboard-stage-prompts'
+import {
   STORY_TO_SCRIPT_EDITABLE_STAGES,
   resolveStoryToScriptStageId,
   type StoryToScriptEditableStageId,
@@ -48,17 +53,24 @@ interface WorkspaceRunStreamConsolesProps {
   scriptToStoryboardStream: RunStreamState
   storyToScriptPendingStart?: boolean
   storyToScriptLaunching?: boolean
+  scriptToStoryboardPendingStart?: boolean
+  scriptToStoryboardLaunching?: boolean
   storyToScriptConsoleMinimized: boolean
   scriptToStoryboardConsoleMinimized: boolean
   onStartStoryToScript?: () => void
   onCancelStoryToScriptPendingStart?: () => void
+  onStartScriptToStoryboard?: () => void
+  onCancelScriptToStoryboardPendingStart?: () => void
   onStoryToScriptMinimizedChange: (next: boolean) => void
   onScriptToStoryboardMinimizedChange: (next: boolean) => void
   hideMinimizedBadges?: boolean
 }
 
+type PromptPipeline = 'storyToScript' | 'scriptToStoryboard'
+
 type PromptEditorState = {
-  stageId: StoryToScriptEditableStageId
+  pipeline: PromptPipeline
+  stageId: StoryToScriptEditableStageId | ScriptToStoryboardEditableStageId
   title: string
   content: string
   source: 'default' | 'override'
@@ -67,9 +79,20 @@ type PromptEditorState = {
   overrideFilePath: string
 }
 
-function aggregateStoryToScriptStages(stages: LLMStageViewItem[]): LLMStageViewItem[] {
-  return STORY_TO_SCRIPT_EDITABLE_STAGES.map((stageDef) => {
-    const matched = stages.filter((stage) => resolveStoryToScriptStageId(stage.id) === stageDef.id)
+function resolveProgressMessageKey(rawKey: unknown, fallback: string): string {
+  if (typeof rawKey !== 'string') return fallback
+  const trimmed = rawKey.trim()
+  if (!trimmed) return fallback
+  return trimmed.startsWith('progress.') ? trimmed.slice('progress.'.length) : trimmed
+}
+
+function aggregateEditableStages(
+  stages: LLMStageViewItem[],
+  stageDefs: Array<{ id: string; titleKey: string }>,
+  resolveStageId: (stepId: string | null | undefined) => string | null,
+): LLMStageViewItem[] {
+  return stageDefs.map((stageDef) => {
+    const matched = stages.filter((stage) => resolveStageId(stage.id) === stageDef.id)
     if (matched.length === 0) {
       return {
         id: stageDef.id,
@@ -132,10 +155,14 @@ export default function WorkspaceRunStreamConsoles({
   scriptToStoryboardStream,
   storyToScriptPendingStart,
   storyToScriptLaunching,
+  scriptToStoryboardPendingStart,
+  scriptToStoryboardLaunching,
   storyToScriptConsoleMinimized,
   scriptToStoryboardConsoleMinimized,
   onStartStoryToScript,
   onCancelStoryToScriptPendingStart,
+  onStartScriptToStoryboard,
+  onCancelScriptToStoryboardPendingStart,
   onStoryToScriptMinimizedChange,
   onScriptToStoryboardMinimizedChange,
   hideMinimizedBadges,
@@ -148,6 +175,7 @@ export default function WorkspaceRunStreamConsoles({
   const [promptEditorLoading, setPromptEditorLoading] = useState(false)
   const [promptEditorSaving, setPromptEditorSaving] = useState(false)
   const [promptEditorError, setPromptEditorError] = useState('')
+
   const storyToScriptActive =
     !!storyToScriptPendingStart ||
     !!storyToScriptLaunching ||
@@ -155,6 +183,8 @@ export default function WorkspaceRunStreamConsoles({
     storyToScriptStream.isRecoveredRunning ||
     storyToScriptStream.status === 'running'
   const scriptToStoryboardActive =
+    !!scriptToStoryboardPendingStart ||
+    !!scriptToStoryboardLaunching ||
     scriptToStoryboardStream.isRunning ||
     scriptToStoryboardStream.isRecoveredRunning ||
     scriptToStoryboardStream.status === 'running'
@@ -170,7 +200,11 @@ export default function WorkspaceRunStreamConsoles({
         : 'processing'
   const storyToScriptStages = useMemo(() => {
     if (storyToScriptStream.stages.length > 0) {
-      return aggregateStoryToScriptStages(storyToScriptStream.stages)
+      return aggregateEditableStages(
+        storyToScriptStream.stages,
+        STORY_TO_SCRIPT_EDITABLE_STAGES,
+        resolveStoryToScriptStageId,
+      )
     }
     if (storyToScriptPendingStart || storyToScriptLaunching) {
       return STORY_TO_SCRIPT_EDITABLE_STAGES.map((stage) => ({
@@ -204,9 +238,7 @@ export default function WorkspaceRunStreamConsoles({
   const storyToScriptActiveStage = storyToScriptStream.activeStepId
     ? storyToScriptStages.find((stage) => stage.id === storyToScriptActiveAggregateStageId) || null
     : null
-  const storyToScriptCardTitle =
-    storyToScriptActiveStage?.title ||
-    t('runConsole.storyToScript')
+  const storyToScriptCardTitle = storyToScriptActiveStage?.title || t('runConsole.storyToScript')
   const storyToScriptSelectedStageId = resolveStoryToScriptStageId(
     storyToScriptStream.selectedStep?.id || storyToScriptStream.activeStepId || null,
   )
@@ -218,32 +250,65 @@ export default function WorkspaceRunStreamConsoles({
     storyToScriptStream.isRunning &&
     storyToScriptStream.selectedStep?.id === storyToScriptStream.activeStepId &&
     storyToScriptSelectedStage?.status === 'processing'
+
   const showScriptToStoryboardConsole =
-    scriptToStoryboardStream.isVisible &&
-    (scriptToStoryboardStream.stages.length > 0 || !!scriptToStoryboardStream.errorMessage || scriptToStoryboardActive)
+    (scriptToStoryboardPendingStart || scriptToStoryboardLaunching || scriptToStoryboardStream.isVisible) &&
+    (scriptToStoryboardPendingStart || scriptToStoryboardLaunching || scriptToStoryboardStream.stages.length > 0 || !!scriptToStoryboardStream.errorMessage || scriptToStoryboardActive)
   const storyboardFallbackStatus: LLMStageViewItem['status'] =
-    scriptToStoryboardStream.status === 'failed' ? 'failed' : 'processing'
-  const scriptToStoryboardStages = scriptToStoryboardStream.stages.length > 0
-    ? scriptToStoryboardStream.stages
-    : [{
+    scriptToStoryboardPendingStart
+      ? 'pending'
+      : scriptToStoryboardStream.status === 'failed'
+        ? 'failed'
+        : 'processing'
+  const scriptToStoryboardStages = useMemo(() => {
+    if (scriptToStoryboardStream.stages.length > 0) {
+      return aggregateEditableStages(
+        scriptToStoryboardStream.stages,
+        SCRIPT_TO_STORYBOARD_EDITABLE_STAGES,
+        resolveScriptToStoryboardStageId,
+      )
+    }
+    if (scriptToStoryboardPendingStart || scriptToStoryboardLaunching) {
+      return SCRIPT_TO_STORYBOARD_EDITABLE_STAGES.map((stage) => ({
+        id: stage.id,
+        title: stage.titleKey,
+        status: 'pending' as const,
+        progress: 0,
+      }))
+    }
+    return [{
       id: 'script_to_storyboard_run',
       title: t('runConsole.scriptToStoryboard'),
       status: storyboardFallbackStatus,
       progress: 0,
       subtitle: scriptToStoryboardStream.errorMessage || undefined,
     }]
+  }, [
+    scriptToStoryboardLaunching,
+    scriptToStoryboardPendingStart,
+    scriptToStoryboardStream.errorMessage,
+    scriptToStoryboardStream.stages,
+    storyboardFallbackStatus,
+    t,
+  ])
+  const scriptToStoryboardActiveAggregateStageId =
+    resolveScriptToStoryboardStageId(scriptToStoryboardStream.activeStepId) ||
+    scriptToStoryboardStages.find((stage) => stage.status === 'processing' || stage.status === 'failed')?.id ||
+    scriptToStoryboardStages.find((stage) => stage.status === 'completed')?.id ||
+    scriptToStoryboardStages[0]?.id ||
+    null
   const scriptToStoryboardActiveStage = scriptToStoryboardStream.activeStepId
-    ? scriptToStoryboardStages.find((stage) => stage.id === scriptToStoryboardStream.activeStepId) || null
+    ? scriptToStoryboardStages.find((stage) => stage.id === scriptToStoryboardActiveAggregateStageId) || null
     : null
-  const scriptToStoryboardCardTitle =
-    scriptToStoryboardActiveStage?.title ||
-    t('runConsole.scriptToStoryboard')
-  const scriptToStoryboardSelectedStageId =
-    scriptToStoryboardStream.selectedStep?.id || scriptToStoryboardStream.activeStepId || null
+  const scriptToStoryboardCardTitle = scriptToStoryboardActiveStage?.title || t('runConsole.scriptToStoryboard')
+  const scriptToStoryboardSelectedStageId = resolveScriptToStoryboardStageId(
+    scriptToStoryboardStream.selectedStep?.id || scriptToStoryboardStream.activeStepId || null,
+  )
   const scriptToStoryboardSelectedStage = scriptToStoryboardSelectedStageId
     ? scriptToStoryboardStages.find((stage) => stage.id === scriptToStoryboardSelectedStageId) || null
     : null
   const scriptToStoryboardShowCursor =
+    !scriptToStoryboardPendingStart &&
     scriptToStoryboardStream.isRunning &&
     scriptToStoryboardStream.selectedStep?.id === scriptToStoryboardStream.activeStepId &&
     scriptToStoryboardSelectedStage?.status === 'processing'
@@ -263,23 +328,33 @@ export default function WorkspaceRunStreamConsoles({
     })
   }
 
-  const handleStoryToScriptStageSelect = (stageId: string) => {
-    const currentActiveRawId = storyToScriptStream.activeStepId
-    if (resolveStoryToScriptStageId(currentActiveRawId) === stageId && currentActiveRawId) {
-      storyToScriptStream.selectStep(currentActiveRawId)
+  const handleAggregatedStageSelect = (
+    stream: RunStreamState,
+    stageId: string,
+    resolveStageId: (stepId: string | null | undefined) => string | null,
+  ) => {
+    const currentActiveRawId = stream.activeStepId
+    if (resolveStageId(currentActiveRawId) === stageId && currentActiveRawId) {
+      stream.selectStep(currentActiveRawId)
       return
     }
-    const matched = storyToScriptStream.stages.find((stage) => resolveStoryToScriptStageId(stage.id) === stageId)
+    const matched = stream.stages.find((stage) => resolveStageId(stage.id) === stageId)
     if (matched) {
-      storyToScriptStream.selectStep(matched.id)
+      stream.selectStep(matched.id)
     }
   }
 
-  const handleOpenPromptEditor = async (stageId: StoryToScriptEditableStageId) => {
+  const handleOpenPromptEditor = async (
+    pipeline: PromptPipeline,
+    stageId: StoryToScriptEditableStageId | ScriptToStoryboardEditableStageId,
+  ) => {
     setPromptEditorLoading(true)
     setPromptEditorError('')
     try {
-      const response = await fetch(`/api/user/story-to-script-prompts/${stageId}?locale=${encodeURIComponent(locale)}`, {
+      const routeBase = pipeline === 'storyToScript'
+        ? '/api/user/story-to-script-prompts'
+        : '/api/user/script-to-storyboard-prompts'
+      const response = await fetch(`${routeBase}/${stageId}?locale=${encodeURIComponent(locale)}`, {
         method: 'GET',
         cache: 'no-store',
       })
@@ -287,9 +362,11 @@ export default function WorkspaceRunStreamConsoles({
       if (!response.ok) {
         throw new Error(typeof payload?.error === 'string' ? payload.error : t('runConsole.promptEditorLoadFailed'))
       }
+      const resolvedTitleKey = resolveProgressMessageKey(payload.titleKey, 'runConsole.storyToScript')
       const nextEditor: PromptEditorState = {
+        pipeline,
         stageId,
-        title: t(payload.titleKey || 'runConsole.storyToScript'),
+        title: t(resolvedTitleKey),
         content: typeof payload.content === 'string' ? payload.content : '',
         source: payload.source === 'override' ? 'override' : 'default',
         filePath: typeof payload.filePath === 'string' ? payload.filePath : '',
@@ -310,7 +387,10 @@ export default function WorkspaceRunStreamConsoles({
     setPromptEditorSaving(true)
     setPromptEditorError('')
     try {
-      const response = await fetch(`/api/user/story-to-script-prompts/${promptEditor.stageId}`, {
+      const routeBase = promptEditor.pipeline === 'storyToScript'
+        ? '/api/user/story-to-script-prompts'
+        : '/api/user/script-to-storyboard-prompts'
+      const response = await fetch(`${routeBase}/${promptEditor.stageId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -363,7 +443,7 @@ export default function WorkspaceRunStreamConsoles({
               stages={storyToScriptStages}
               activeStageId={storyToScriptActiveAggregateStageId || storyToScriptStages[0]?.id || ''}
               selectedStageId={storyToScriptSelectedStageId || undefined}
-              onSelectStage={handleStoryToScriptStageSelect}
+              onSelectStage={(stageId) => handleAggregatedStageSelect(storyToScriptStream, stageId, resolveStoryToScriptStageId)}
               onRetryStage={(stepId) => {
                 void handleRetryStepById(storyToScriptStream, stepId)
               }}
@@ -376,14 +456,12 @@ export default function WorkspaceRunStreamConsoles({
               errorMessage={storyToScriptStream.errorMessage}
               renderStageActions={(stage) => {
                 const editableStageId = resolveStoryToScriptStageId(stage.id)
-                if (!editableStageId) {
-                  return null
-                }
+                if (!editableStageId) return null
                 return (
                   <button
                     type="button"
                     onClick={() => {
-                      void handleOpenPromptEditor(editableStageId)
+                      void handleOpenPromptEditor('storyToScript', editableStageId)
                     }}
                     className="glass-btn-base glass-btn-secondary rounded-md px-2.5 py-1 text-[11px]"
                   >
@@ -442,23 +520,50 @@ export default function WorkspaceRunStreamConsoles({
               title={scriptToStoryboardCardTitle}
               subtitle={t('runConsole.scriptToStoryboardSubtitle')}
               stages={scriptToStoryboardStages}
-              activeStageId={scriptToStoryboardStream.activeStepId || scriptToStoryboardStages[scriptToStoryboardStages.length - 1]?.id || ''}
-              selectedStageId={scriptToStoryboardStream.selectedStep?.id || undefined}
-              onSelectStage={scriptToStoryboardStream.selectStep}
+              activeStageId={scriptToStoryboardActiveAggregateStageId || scriptToStoryboardStages[0]?.id || ''}
+              selectedStageId={scriptToStoryboardSelectedStageId || undefined}
+              onSelectStage={(stageId) => handleAggregatedStageSelect(scriptToStoryboardStream, stageId, resolveScriptToStoryboardStageId)}
               onRetryStage={(stepId) => {
                 void handleRetryStepById(scriptToStoryboardStream, stepId)
               }}
               outputText={scriptToStoryboardStream.outputText}
+              placeholderText={scriptToStoryboardPendingStart ? t('runConsole.scriptToStoryboardWaiting') : undefined}
               activeMessage={scriptToStoryboardStream.activeMessage}
               overallProgress={scriptToStoryboardStream.overallProgress}
               showCursor={scriptToStoryboardShowCursor}
-              autoScroll={scriptToStoryboardStream.selectedStep?.id === scriptToStoryboardStream.activeStepId}
+              autoScroll={scriptToStoryboardSelectedStageId === scriptToStoryboardActiveAggregateStageId}
               errorMessage={scriptToStoryboardStream.errorMessage}
-              topRightAction={(
-                <div className="flex items-center gap-2">
+              renderStageActions={(stage) => {
+                const editableStageId = resolveScriptToStoryboardStageId(stage.id)
+                if (!editableStageId) return null
+                return (
                   <button
                     type="button"
-                    onClick={scriptToStoryboardStream.reset}
+                    onClick={() => {
+                      void handleOpenPromptEditor('scriptToStoryboard', editableStageId)
+                    }}
+                    className="glass-btn-base glass-btn-secondary rounded-md px-2.5 py-1 text-[11px]"
+                  >
+                    {t('runConsole.editPrompt')}
+                  </button>
+                )
+              }}
+              topRightAction={(
+                <div className="flex items-center gap-2">
+                  {scriptToStoryboardPendingStart && onStartScriptToStoryboard && (
+                    <button
+                      type="button"
+                      onClick={onStartScriptToStoryboard}
+                      className="glass-btn-base glass-btn-primary rounded-lg px-3 py-1.5 text-xs"
+                    >
+                      {t('runConsole.start')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={scriptToStoryboardPendingStart
+                      ? (onCancelScriptToStoryboardPendingStart || scriptToStoryboardStream.reset)
+                      : scriptToStoryboardStream.reset}
                     className="glass-btn-base glass-btn-secondary rounded-lg px-3 py-1.5 text-xs"
                   >
                     {t('runConsole.stop')}

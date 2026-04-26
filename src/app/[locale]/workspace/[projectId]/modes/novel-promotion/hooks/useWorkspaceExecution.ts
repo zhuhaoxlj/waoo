@@ -79,6 +79,7 @@ export function useWorkspaceExecution({
   const [isConfirmingAssets, setIsConfirmingAssets] = useState(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [storyToScriptPendingStart, setStoryToScriptPendingStart] = useState(false)
+  const [scriptToStoryboardPendingStart, setScriptToStoryboardPendingStart] = useState(false)
   const [transitionProgress, setTransitionProgress] = useState({ message: '', step: '' })
   const [storyToScriptConsoleMinimized, setStoryToScriptConsoleMinimized] = useState(
     () => readSessionBoolean(storyToScriptMinimizedStorageKey),
@@ -165,6 +166,16 @@ export function useWorkspaceExecution({
     storyToScriptStream.reset()
   }, [storyToScriptStream])
 
+  const openScriptToStoryboardPendingStart = useCallback(() => {
+    setScriptToStoryboardConsoleMinimized(false)
+    setScriptToStoryboardPendingStart(true)
+  }, [])
+
+  const cancelScriptToStoryboardPendingStart = useCallback(() => {
+    setScriptToStoryboardPendingStart(false)
+    scriptToStoryboardStream.reset()
+  }, [scriptToStoryboardStream])
+
   const handleAnalyzeAssets = useCallback(async () => {
     if (!episodeId) return
     if (isAssetAnalysisRunning) {
@@ -240,6 +251,7 @@ export function useWorkspaceExecution({
     }
 
     try {
+      setScriptToStoryboardPendingStart(false)
       setScriptToStoryboardConsoleMinimized(false)
       setIsConfirmingAssets(true)
       setTransitionProgress({ message: t('execution.scriptToStoryboardRunning'), step: 'streaming' })
@@ -338,11 +350,13 @@ export function useWorkspaceExecution({
     scriptToStoryboardStream.isRunning ||
     scriptToStoryboardStream.isRecoveredRunning ||
     storyToScriptPendingStart ||
+    scriptToStoryboardPendingStart ||
     isTransitioning ||
     isConfirmingAssets
   ), [
     isConfirmingAssets,
     isTransitioning,
+    scriptToStoryboardPendingStart,
     scriptToStoryboardStream.isRecoveredRunning,
     scriptToStoryboardStream.isRunning,
     storyToScriptPendingStart,
@@ -356,6 +370,7 @@ export function useWorkspaceExecution({
     isConfirmingAssets,
     isTransitioning,
     storyToScriptPendingStart,
+    scriptToStoryboardPendingStart,
     transitionProgress,
     storyToScriptConsoleMinimized,
     setStoryToScriptConsoleMinimized,
@@ -367,6 +382,8 @@ export function useWorkspaceExecution({
     handleAnalyzeAssets,
     openStoryToScriptPendingStart,
     cancelStoryToScriptPendingStart,
+    openScriptToStoryboardPendingStart,
+    cancelScriptToStoryboardPendingStart,
     runStoryToScriptFlow,
     runScriptToStoryboardFlow,
     showCreatingToast,

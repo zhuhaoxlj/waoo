@@ -28,8 +28,7 @@ interface UseWorkspaceStageRuntimeParams {
   handleUpdateEpisode: (key: string, value: unknown) => Promise<void>
   handleUpdateConfig: (key: string, value: unknown) => Promise<void>
   openStoryToScriptPendingStart: () => void
-  runWithRebuildConfirm: (action: 'storyToScript' | 'scriptToStoryboard', operation: () => Promise<void>) => Promise<void>
-  runScriptToStoryboardFlow: () => Promise<void>
+  openScriptToStoryboardPendingStart: () => void
   handleUpdateClip: (clipId: string, updates: Record<string, unknown>) => Promise<void>
   openAssetLibrary: (characterId?: string | null, refreshAssets?: boolean) => void
   handleStageChange: (stage: string) => void
@@ -71,8 +70,7 @@ export function useWorkspaceStageRuntime({
   handleUpdateEpisode,
   handleUpdateConfig,
   openStoryToScriptPendingStart,
-  runWithRebuildConfirm,
-  runScriptToStoryboardFlow,
+  openScriptToStoryboardPendingStart,
   handleUpdateClip,
   openAssetLibrary,
   handleStageChange,
@@ -111,7 +109,9 @@ export function useWorkspaceStageRuntime({
       return handleUpdateClip(clipId, data as Record<string, unknown>)
     },
     onOpenAssetLibrary: () => openAssetLibrary(),
-    onRunScriptToStoryboard: () => runWithRebuildConfirm('scriptToStoryboard', runScriptToStoryboardFlow),
+    onRunScriptToStoryboard: async () => {
+      openScriptToStoryboardPendingStart()
+    },
     onStageChange: handleStageChange,
     onGenerateVideo: handleGenerateVideo,
     onGenerateAllVideos: handleGenerateAllVideos,
@@ -135,9 +135,8 @@ export function useWorkspaceStageRuntime({
     isSubmittingTTS,
     isTransitioning,
     openStoryToScriptPendingStart,
+    openScriptToStoryboardPendingStart,
     openAssetLibrary,
-    runScriptToStoryboardFlow,
-    runWithRebuildConfirm,
     resolvedUserVideoModels,
     capabilityOverrides,
     videoModel,
