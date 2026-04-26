@@ -227,7 +227,7 @@ export function LocationEditModal({
     }
 
     const modalContent = (
-        <div className="fixed inset-0 glass-overlay flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 glass-overlay flex items-center justify-center z-[170] p-4">
             <div className="glass-surface-modal max-w-2xl w-full max-h-[80vh] flex flex-col">
                 <div className="p-6 space-y-4 overflow-y-auto flex-1">
                     <div className="flex items-center justify-between">
