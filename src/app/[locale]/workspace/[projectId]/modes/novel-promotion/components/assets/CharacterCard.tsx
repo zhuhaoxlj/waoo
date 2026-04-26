@@ -393,9 +393,9 @@ export default function CharacterCard({
     <>
       <button
         type="button"
-        onClick={isPrimaryAppearance && onEditGeneratePrompt ? onEditGeneratePrompt : onEdit}
+        onClick={onEdit}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-bg-muted)] flex items-center justify-center transition-colors"
-        title={isPrimaryAppearance && onEditGeneratePrompt ? tCharacterProfile('editGeneratePrompt') : t('video.panelCard.editPrompt')}
+        title={t('character.edit')}
       >
         <AppIcon name="edit" className="w-3.5 h-3.5 text-[var(--glass-text-secondary)]" />
       </button>
